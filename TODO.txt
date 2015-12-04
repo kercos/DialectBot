@@ -1,0 +1,7 @@
+
+TODO
+- questione tastiera che scompare
+- timer?
+	
+- threads safe
+	occorre importare libreria threading
