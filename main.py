@@ -24,6 +24,10 @@ from google.appengine.ext import deferred
 #vendor.add('lib')
 
 import webapp2
+import copy
+import itertools
+import math
+import operator
 #from flask import Flask, jsonify
 
 import gettext
@@ -39,10 +43,38 @@ BASE_URL = 'https://api.telegram.org/bot' + key.TOKEN + '/'
 DASHBOARD_DIR_ENV = Environment(loader=FileSystemLoader('dashboard'), autoescape = True)
 tell_completed = False
 
-STATES = {
+ISTRUZIONI =  "Istruzioni OpenGarden, da inserire..."
 
+AVVERTENZE = "Avvertenze OpenGarden, da inserire..."
+
+
+STATES = {
+    -4: 'Posizione',
+    -3: 'Posizione/Contatto',
+    -2: 'Settings',
+    -1: 'Initial',
+    0:   'Started',
 }
 
+BOTTONE_ANNULLA = emoij.NOENTRY + " Annulla"
+
+PRODOTTI = [['Caki','Carote']]
+PRODOTTI_ANNULLA = copy.deepcopy(PRODOTTI)
+PRODOTTI_ANNULLA.append([BOTTONE_ANNULLA])
+PRODOTTI_FLAT = list(itertools.chain(*PRODOTTI))
+
+"""
+PRODOTTI = [
+    ['Caki','Castagne','Wiwi'],
+    ['Mele','Noci','Pere'],
+    ['Barbabietole','Bietola'],
+    ['Broccoli', 'Carote','Cavolfiori'],
+    ['Carciofi','Cappuccio','Cipolla'],
+    ['Finocchio','Insalata','Porri'],
+    ['Prezzemolo','Radicchio','Ravanello'],
+    ['Spinaci','Zucca']
+]
+"""
 
 # ================================
 # ================================
@@ -86,6 +118,71 @@ def addPeopleCount():
     p.put()
     return p
 
+# ================================
+# ================================
+# ================================
+
+
+class Product(ndb.Model):
+    chat_id = ndb.IntegerProperty(indexed=True)
+    product = ndb.StringProperty(indexed=True)
+    person_name = ndb.StringProperty()
+    entry_date = ndb.DateTimeProperty(auto_now=True)
+    location = ndb.GeoPtProperty()
+    contact = ndb.StringProperty()
+
+def getProduct(chat_id, product):
+    key = str(chat_id) + '_' + product
+    product = ndb.Key(Product, key).get()
+    return product
+
+def addProduct(chat_id, product, person_name, location, contact):
+    p = Product.get_or_insert(str(chat_id) + '_' + product)
+    p.chat_id = chat_id
+    p.product = product
+    p.person_name = person_name
+    p.location = location
+    p.contact = contact
+    p.put()
+    return p
+
+def getListProducts(product, p):
+    result = []
+    qry = Product.query(Product.product==product)
+    for r in qry:
+        if (r.chat_id!=p.chat_id):
+            distance = HaversineDistance(p.location,r.location)
+            result.append([r.person_name, distance, r.contact])
+    sort_table(result, 1)
+    return result
+
+def format_distance(dst):
+    if (dst>=100):
+        return str(round(dst, 0)) + " km"
+    if (dst>=10):
+        return str(round(dst, 1)) + " km"
+    if (dst>=1):
+        return str(round(dst, 2)) + " km"
+    return str(round(dst*1000, 0)) + " m"
+
+def sort_table(table, col=0):
+    return sorted(table, key=operator.itemgetter(col))
+
+def HaversineDistance(loc1, loc2):
+    """Method to calculate Distance between two sets of Lat/Lon."""
+    lat1 = loc1.lat
+    lon1 = loc1.lon
+    lat2 = loc2.lat
+    lon2 = loc2.lon
+    earth = 6371 #Earth's Radius in Kms.
+
+    #Calculate Distance based in Haversine Formula
+    dlat = math.radians(lat2-lat1)
+    dlon = math.radians(lon2-lon1)
+    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    d = earth * c
+    return d
 
 # ================================
 # ================================
@@ -93,15 +190,14 @@ def addPeopleCount():
 
 
 class Person(ndb.Model):
+    chat_id = ndb.IntegerProperty()
     name = ndb.StringProperty()
     last_name = ndb.StringProperty(default='-')
     username = ndb.StringProperty(default='-')
+    state = ndb.IntegerProperty(default=-1, indexed=True)
     last_mod = ndb.DateTimeProperty(auto_now=True)
-    last_seen = ndb.DateTimeProperty()
-    chat_id = ndb.IntegerProperty()
-    state = ndb.IntegerProperty(default=-1)
-    last_type = ndb.StringProperty(default='-1')
     location = ndb.GeoPtProperty()
+    contact = ndb.StringProperty()
     enabled = ndb.BooleanProperty(default=True)
 
 
@@ -112,24 +208,45 @@ def addPerson(chat_id, name):
     p.put()
     return p
 
-def setType(p, type):
-    p.last_type = type
-    p.put()
-
 def setState(p, state):
     p.state = state
     p.put()
 
-def restart(person):
-    tell(person.chat_id, "Premi START se vuoi ricominciare", kb=[['START','HELP']])
-    setState(person, -1)
+def restart(person, txt=None):
+    reply_txt = (txt + '\n') if txt!=None else ''
+    if person.contact==None or person.location==None:
+        reply_txt += "Per far funzionare questo servizio abbiamo bisgono di conoscere la tua posizione e avere un tuo recapito telefonico.\n" \
+                     "Premi su IMPOSTAZIONI per inserire questi dati o HELP per ottenere maggiori informazioni."
+        tell(person.chat_id, reply_txt, kb=[['IMPOSTAZIONI'],['HELP']])
+        setState(person, -2)
+    else:
+        reply_txt += "Premi AVVIA se vuoi cercare o offrire prodotti."
+        tell(person.chat_id, reply_txt, kb=[['AVVIA'],['IMPOSTAZIONI'],['HELP']])
+        setState(person, -1)
+
+def handleSettings(p,txt=None):
+    reply_txt = (txt + '\n') if txt!=None else ''
+    if p.contact==None or p.location==None:
+        if p.contact==None and p.location==None:
+            reply_txt += 'Abbiamo bisogno della tua posizione e di un tuo recapito telefonico'
+        elif p.contact==None:
+            reply_txt += 'Abbiamo bisogno di un tuo recapito telefonico'
+        else:
+            reply_txt += 'Abbiamo bisogno della tua posizione'
+    else:
+        reply_txt += 'Abbiamo già la tua posizione e il tuo contatto ma puoi cambiarle'
+    tell(p.chat_id, reply_txt, kb=[['POSIZIONE','RECAPITO'],['TORNA INDIETRO']])
+    setState(p, -3)
 
 def setLocation(p, loc):
-    p.location = loc
+    p.location =  ndb.GeoPt(loc['latitude'], loc['longitude'])
     p.put()
 
-def start(p, cmd, name, last_name, username):
-    #logging.debug(p.name + _(' ') + cmd + _(' ') + str(p.enabled))
+def setContact(p, contact):
+    p.contact =  contact
+    p.put()
+
+def init_user(p, cmd, name, last_name, username):
     #if (p.name.decode('utf-8') != name.decode('utf-8')):
     if (p.name != name):
         p.name = name
@@ -142,14 +259,8 @@ def start(p, cmd, name, last_name, username):
         p.username = username
         p.put()
     if not p.enabled:
-        if cmd=='/start':
-            p.enabled = True
-            p.put()
-        else: # START when diasbled
-            return
-    tell(p.chat_id, "Ciao " + p.name.encode('utf-8') + '! ' + "Cerchi o offri qualcosa?"),
-    kb=[["Cerco", "Offro"],[emoij.NOENTRY + " Annulla"]]
-    setState(p,0)
+        p.enabled = True
+        p.put()
 
 def get_date_CET(date):
     if date is None: return None
@@ -182,16 +293,12 @@ def broadcast(msg):
 
 def getInfoCount():
     c = Person.query().count()
-    msg = _("We are now") + _(' ') + str(c) + _(' ') + _("people subscribed to OpenGarden!") + _(' ') +\
-          _("We want to get bigger and bigger!") + _(' ') + _("Invite more people to join us!")
+    msg = "Attualmente siamo in " + str(c) + " persone iscritte a OpenGarden!" +\
+          "Vogliamo crescere assieme!" + "Invita altre persone ad aunirsi!"
     return msg
 
 def tellmyself(p, msg):
-    tell(p.chat_id, "Listen listen... " + msg)
-
-def updateLastSeen(p):
-    p.last_seen = datetime.now()
-    p.put()
+    tell(p.chat_id, "Udiete udite... " + msg)
 
 def tell_masters(msg):
     for id in key.MASTER_CHAT_ID:
@@ -251,7 +358,7 @@ def tell(chat_id, msg, kb=None, hideKb=True):
             p = Person.query(Person.chat_id==chat_id).get()
             p.enabled = False
             p.put()
-            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
 
 # ================================
 # ================================
@@ -359,91 +466,66 @@ class WebhookHandler(webapp2.RequestHandler):
 
         # update_id = body['update_id']
         message = body['message']
-        message_id = message.get('message_id')
+        #message_id = message.get('message_id')
         # date = message.get('date')
-        if "text" not in message:
-            return;
-        text = message.get('text').encode('utf-8')
-        # fr = message.get('from')
         if "chat" not in message:
             return;
+        # fr = message.get('from')
         chat = message['chat']
         chat_id = chat['id']
         if "first_name" not in chat:
             return;
+        text = message.get('text').encode('utf-8') if "text" in message else ""
         name = chat["first_name"].encode('utf-8')
         last_name = chat["last_name"].encode('utf-8') if "last_name" in chat else "-"
         username = chat["username"] if "username" in chat else "-"
+        location = message["location"] if "location" in message else None
+        logging.debug('location: ' + str(location))
 
         def reply(msg=None, kb=None, hideKb=True):
             tell(chat_id, msg, kb, hideKb)
 
         p = ndb.Key(Person, str(chat_id)).get()
 
-
-        instructions =  "OpenGarden Instructions"
-
-        disclaimer = "OpenGarden Disclaimer"
-
         if p is None:
             # new user
             tell_masters("New user: " + name)
             p = addPerson(chat_id, name)
+            logging.info("Text: " + text)
             if text == '/help':
-                reply(instructions)
+                reply(ISTRUZIONI)
             elif text in ['/start','START']:
-                start(p, text, name, last_name, username)
-                # state = 0
+                reply("Ciao " + name + ", " + "benvenuto/a!")
+                init_user(p, text, name, last_name, username)
+                restart(p)
+                # state = -1 or -2
             else:
-                reply(_("Hi") + _(' ') + name + ", " + _("welcome!"))
-                reply(instructions)
+                reply("Qualcosa non ha funzionato... contatta kercos@gmail.com")
         else:
             # known user
             if text=='/state':
-              reply("You are in state " + str(p.state) + ": " + STATES[p.state]);
+              reply("Sei nello stato " + str(p.state) + ": " + STATES[p.state]);
             elif p.state == -1:
                 # INITIAL STATE
                 if text in ['/help','HELP']:
-                    reply(instructions)
-                elif text == _('DISCLAIMER'):
-                    reply(disclaimer)
-                elif text in ['/start','START']:
-                    start(p, text, name, last_name, username)
-                    # state = 0
-                elif text == _('SETTINGS'):
-                    reply(_("Settings options"),
-                          kb=[[_('LANGUAGE')], [_('INFO USERS'),_('DAY SUMMARY')],[emoij.NOENTRY + _(' ') + _("Abort")]])
-                    setState(p, 90)
+                    reply(ISTRUZIONI)
+                elif text.endswith('AVVIA'):
+                    reply('Premi CERCO o OFFRO se vuoi cercare o offrire prodotti', kb = [['CERCO','OFFRO'],[BOTTONE_ANNULLA]])
+                    setState(p,0)
+                elif text.endswith('IMPOSTAZIONI'):
+                    handleSettings(p)
                 elif chat_id in key.MASTER_CHAT_ID:
                     if text == '/resetusers':
                         logging.debug('reset user')
                         c = resetNullStatesUsers()
                         reply("Reset states of users: " + str(c))
-                        #restartAllUsers('Less spam, new interface :)')
-                        #resetLastNames()
-                        #resetEnabled()
-                        #resetLanguages()
-                        #resesetNames()
                     elif text=='/infocount':
                         reply(getInfoCount())
                     elif text == '/resetcounters':
                         resetCounter()
                     elif text == '/test':
                         logging.debug('test')
-                        #tell_katja_test()
-                        #updateDashboard()
-                        #reply('test')
-                        #reply(getInfoDay())
-                        #tell_masters('test')
-                        #reply(getInfoWeek())
-                        #testQueue()
-                        #msg = "Prova di broadcasting.\n" + \
-                        #      "Se lo ricevi una sola volta vuol dire che da ora in poi funziona :D (se no cerchiamo di risolverlo)\n\n" + \
-                        #      "Broadcasting test.\n" + \
-                        #      "If you receive it only once it means that now it works correctly :D (if not we will try to fix it)"
-                        #msg = "Last  broadcast test for today :P"
-                        #broadcastQueue(msg)
-                        deferred.defer(tell_fede, "Hello, world!")
+                        #deferred.defer(tell_fede, "Hello, world!")
                     elif text.startswith('/broadcast ') and len(text)>11:
                         msg = text[11:] #.encode('utf-8')
                         deferred.defer(broadcast, msg)
@@ -451,30 +533,108 @@ class WebhookHandler(webapp2.RequestHandler):
                         msg = text[6:] #.encode('utf-8')
                         tellmyself(p,msg)
                     else:
-                        reply('Sorry, I only understand /help /start'
-                              '/users and other secret commands...')
+                        reply('Scusa, capisc solo /help /start '
+                              'e altri comandi segreti...')
                     #setLanguage(d.language)
                 else:
-                    reply(_("Sorry, I don't understand you"))
+                    reply("Scusa non capisco quello che hai detto.\n"
+                          "Usa i pulsanti sotto o premi HELP per avere informazioni.")
+            elif p.state == -2:
+                # IMPOSTAZIONI
+                if text in ['/help','HELP']:
+                    reply(ISTRUZIONI)
+                if text.endswith('IMPOSTAZIONI'):
+                    handleSettings(p)
+            elif p.state == -3:
+                # POSIZIONE/CONTATTO
+                if text.endswith('TORNA INDIETRO'):
                     restart(p)
-            #kb=[[emoij.CAR + _(' ') + _("Driver"), emoij.FOOTPRINTS + _(' ') + _("Passenger")],[emoij.NOENTRY + _(' ') + _("Abort")]])
+                elif text.endswith('POSIZIONE'):
+                    setState(p,-4)
+                    reply("Usa la graffetta in basso per inviarmi la tua posizione.", kb = [['TORNA INDIETRO']])
+                elif text.endswith('RECAPITO'):
+                    setState(p,-5)
+                    reply("Inserisci le tue informazioni (telefono ed eventualmente un indirizzo email).",
+                          kb = [['TORNA INDIETRO']])
+            elif p.state == -4:
+                # POSIZIONE
+                if location!=None:
+                    setLocation(p,location)
+                    text = 'Grazie per averci inviato la tua posizione!'
+                    if p.contact==None:
+                        handleSettings(p,txt=text)
+                    else:
+                        restart(p,txt=text)
+                elif text.endswith('TORNA INDIETRO'):
+                    handleSettings(p)
+                else:
+                    reply("Scusa non capisco quello che hai detto.\n"
+                          "Ho bisogno di sapere la tua posizione.\n"
+                          "Usa la graffetta in basso per inviarmela.", kb = [['TORNA INDIETRO']])
+            elif p.state == -5:
+                if text.endswith('TORNA INDIETRO'):
+                    handleSettings(p)
+                elif len(text)==0:
+                    reply("Ho bisogno di sapere la tua posizione.\n"
+                          "Usa la graffetta in basso per inviarmela.", kb = [['TORNA INDIETRO']])
+                else:
+                    setContact(p,text)
+                    text = 'Grazie per averci inviato il tuo contatto!'
+                    if p.location==None:
+                        handleSettings(p,txt=text)
+                    else:
+                        restart(p,txt=text)
+                # CONTATTO
             elif p.state == 0:
                 # AFTER TYPING START
-                #logging.debug(text, type(text))
-                if text.endswith(_("Cerco")):
-                #if text == emoij.FOOTPRINTS + _(' ') + _("Passenger"):
-                    setState(p, 20)
-                    setType(p, text)
-                elif text.endswith(_("Offro")):
-                #elif text == emoij.CAR + _(' ') + _("Driver"):
-                    setState(p, 30)
-                    setType(p, text)
-                elif text.endswith(_("Abort")):
-                #elif text == emoij.NOENTRY + _(' ') + _("Abort"):
-                    reply(_("Passage aborted."))
+                if text.endswith("Annulla"):
+                    reply("Operazione annullata.")
                     restart(p);
                     # state = -1
-                else: reply(_("Sorry, I don't understand you"))
+                elif text.endswith("CERCO"):
+                    setState(p, 20)
+                    reply("Bene! Quale prodotti cerchi?", kb=PRODOTTI_ANNULLA)
+                elif text.endswith("OFFRO"):
+                    setState(p, 30)
+                    reply("Bene! Quale prodotti offri?", kb=PRODOTTI_ANNULLA)
+                elif text.endswith("Annulla"):
+                    reply("Operazione annullata.")
+                    restart(p);
+                    # state = -1
+                else:
+                    reply("Scusa non capisco quello che hai detto")
+            elif p.state == 20:
+                # CERCO PRODOTTI
+                if text.endswith("Annulla"):
+                    reply("Operazione annullata.")
+                    restart(p);
+                    # state = -1
+                elif text in PRODOTTI_FLAT:
+                    table = getListProducts(text, p)
+                    if len(table)==0:
+                        reply('Nessuna offerta trovata per questo prodotto')
+                    else:
+                        text = '';
+                        for row in table:
+                            text += row[0] + ' ' + format_distance(row[1]) + " Contatto: " + row[2] + "\n"
+                        reply(text)
+                else:
+                    reply("Scusa non capisco che prodotto cerchi, ti prego di premere uno dei pulsanti sotto.")
+            elif p.state == 30:
+                # OFFRO PRODOTTI
+                if text.endswith("Annulla"):
+                    reply("Operazione annullata.")
+                    restart(p);
+                    # state = -1
+                elif text in PRODOTTI_FLAT:
+                    product = getProduct(p.chat_id,text)
+                    if (product!=None):
+                        reply('Hai già inserito questo prodotto, inseriscine un altro o premi ANNULLA')
+                    else:
+                        addProduct(p.chat_id, text, p.name, p.location, p.contact)
+                        restart(p,txt='Grazie per aver inserito un prodotto!')
+                else:
+                    reply("Scusa non capisco che prodotto cerchi, ti prego di premere uno dei pulsanti sotto.")
             else:
                 reply("Se è verificato un problemino... segnalamelo mandando una mail a kercos@gmail.com")
 
