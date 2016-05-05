@@ -1,17 +1,30 @@
-#import json
+# -*- coding: utf-8 -*-
+
+#import json'libs'
 import json
 import logging
 import urllib
 import urllib2
-import datetime
+import person
+from person import Person
 from datetime import datetime
 from datetime import timedelta
 from time import sleep
-import date_util
 # import requests
+import multipart
+import recording
+from recording import Recording
+import geoUtils
+
+# for sending images
+from PIL import Image
+import multipart
+import random
+import StringIO
 
 import key
 import emoij
+import time_util
 
 # standard app engine imports
 from google.appengine.api import urlfetch
@@ -39,220 +52,146 @@ from jinja2 import Environment, FileSystemLoader
 # ================================
 
 BASE_URL = 'https://api.telegram.org/bot' + key.TOKEN + '/'
+BASE_URL_FILE = 'https://api.telegram.org/bot/file/bot' + key.TOKEN + '/'
 
 DASHBOARD_DIR_ENV = Environment(loader=FileSystemLoader('dashboard'), autoescape = True)
-tell_completed = False
 
-ISTRUZIONI =  "Istruzioni OpenGarden, da inserire..."
+ISTRUZIONI =  "Sono DialectBot, un tool gratuito e aperto alla comunità per registrare i dialetti italiani. " \
+              "Hai la possibilità di ascoltare gli audio che sono già stati inseriti o registrarne di nuovi.\n\n" \
+              "Se pensi di non parlare nessun dialetto specifico ti consigliamo " \
+              "di utilizzare questo bot per registrare parenti, amici o persone " \
+              "che incontri quando ti capita di viaggiare tra paesini sperduti in Italia.\n\n" \
+              "Per maggiori informazioni contatta @kercos\n\n" \
+              "Aiutaci a far conoscere questo bot invitando altri amici e votandolo su " \
+              "telegramitalia.it/dialectbot e su telegram.me/storebot?start=dialectbot\n\n" \
+              "Buon ascolto e buona registrazione a tutti!\n\n" \
+
+ISTRUZIONI_POSIZIONE = "Scrivi il nome del luogo di cui vuoi inserire una registrazione " \
+                       "o invia la posizione GPS seguendo le seguenti istruzioni:\n" + \
+                       "1) premi la graffetta in basso (" + emoij.PAPER_CLIP + ")\n" + \
+                       "2) scegli una posizione nella mappa (sii più preciso/a possibile)."
+
+
+ISTRUZIONI_POSIZIONE_GUESS = "Prova ad indovinare la posizione geografica della registrazione: " \
+                             "scrivi il nome del luogo o invia la posizione GPS seguendo le seguenti istruzioni:\n" + \
+                             "1) premi la graffetta in basso (" + emoij.PAPER_CLIP + ")\n" + \
+                             "2) scegli una posizione nella mappa (sii più preciso/a possibile)."
+
+ISTRUZIONI_POSIZIONE_SEARCH = "Scrivi il nome del luogo di cui vuoi cercare una registrazione " \
+                              "o invia la posizione GPS seguendo le seguenti istruzioni:\n" + \
+                              "1) premi la graffetta in basso (" + emoij.PAPER_CLIP + ")\n" + \
+                              "2) scegli una posizione nella mappa (sii più preciso/a possibile)."
+
+MESSAGE_FOR_FRIENDS = "Ciao, ho scoperto @dialectbot, un tool gratuito e aperto alla comunità " \
+                      "per ascoltare e registrare i dialetti italiani. " \
+                      "Provalo premendo su @dialectbot!"
 
 AVVERTENZE = "Avvertenze OpenGarden, da inserire..."
 
 
 STATES = {
-    -4: 'Posizione',
-    -3: 'Posizione/Contatto',
-    -2: 'Settings',
-    -1: 'Initial',
+    -2: 'Setting posizione',
+    -1: 'Initial with ASCOLTA, REGISTRA e HELP',
+    20: 'Registra',
+    21: 'Confirm recording',
+    22: 'Ask for transcription',
+    23: 'Deal with transcription answer',
+    30: 'Ascolta',
+    31: 'Indovina Luogo',
+    32: 'Ricerca Luogo',
     0:   'Started',
 }
 
-BOTTONE_ANNULLA = emoij.NOENTRY + " Annulla"
+MIC = u'\U0001F399'.encode('utf-8')
+EAR = u'\U0001F442'.encode('utf-8')
+INFO = u'\U00002139'.encode('utf-8')
+SPEAKING_HEAD = u'\U0001F5E3'.encode('utf-8')
+CANCEL = u'\U0000274C'.encode('utf-8')
+SEARCH = u'\U0001F50E'.encode('utf-8')
+POINT_LEFT = u'\U0001F448'.encode('utf-8')
+WORLD = u'\U0001F30D'.encode('utf-8')
+CLOCK = u'\U000023F2'.encode('utf-8')
+CALENDAR = u'\U0001F4C5'.encode('utf-8')
+FROWNING_FACE = u'\U0001F641'.encode('utf-8')
+HUNDRED = u'\U0001F4AF'.encode('utf-8')
+CLAPPING_HANDS = b'\xF0\x9F\x91\x8F'
+SMILY = u'\U0001F60A'.encode('utf-8')
 
-PRODOTTI = [['Caki','Carote']]
-PRODOTTI_ANNULLA = copy.deepcopy(PRODOTTI)
-PRODOTTI_ANNULLA.append([BOTTONE_ANNULLA])
-PRODOTTI_FLAT = list(itertools.chain(*PRODOTTI))
+BOTTONE_ANNULLA = CANCEL + " Annulla"
+BOTTONE_INDIETRO = emoij.LEFTWARDS_BLACK_ARROW + ' ' + "Indietro"
+BOTTONE_REGISTRA = MIC + " REGISTRA"
+BOTTONE_ASCOLTA = EAR + " ASCOLTA"
+BOTTONE_INVITA = SPEAKING_HEAD + " INVITA UN AMICO"
+BOTTONE_INFO = INFO + " INFO"
+BOTTONE_INDOVINA_LUOGO = WORLD + POINT_LEFT + " INDOVINA LUOGO"
+BOTTONE_CERCA_LUOGO = SEARCH + " CERCA LUOGO"
+BOTTONE_RECENTI = CALENDAR + " REGISTRAZIONI RECENTI"
+BOTTONE_TUTTE = HUNDRED + " TUTTE LE REGISTRAZIONI"
 
-"""
-PRODOTTI = [
-    ['Caki','Castagne','Wiwi'],
-    ['Mele','Noci','Pere'],
-    ['Barbabietole','Bietola'],
-    ['Broccoli', 'Carote','Cavolfiori'],
-    ['Carciofi','Cappuccio','Cipolla'],
-    ['Finocchio','Insalata','Porri'],
-    ['Prezzemolo','Radicchio','Ravanello'],
-    ['Spinaci','Zucca']
-]
-"""
+BOTTONE_CONTACT = {
+    'text': "Invia il tuo contatto",
+    'request_contact': True,
+}
+
+BOTTONE_LOCATION = {
+    'text': "Invia la tua location",
+    'request_location': True,
+}
+
+BOTTONE_CALLBACK1 = {
+    'text': "button 1",
+    'callback_data': "sample data 1",
+}
+
+BOTTONE_CALLBACK2 = {
+    'text': "button 2",
+    'callback_data': "sample data 2",
+}
+
+BOTTONE_CALLBACK3 = {
+    'text': "button 2",
+    'callback_data': "sample data 3",
+}
+
 
 # ================================
 # ================================
 # ================================
 
-class Counter(ndb.Model):
-    name = ndb.StringProperty()
-    counter = ndb.IntegerProperty()
+def restart(p, txt=None):
+    reply_txt = (txt + '\n\n') if txt!=None else ''
+    reply_txt += "Premi ASCOLTA o REGISTRA se vuoi ascoltare o registrare una frase in un dialetto."
+    tell(p.chat_id, reply_txt, kb=[[BOTTONE_ASCOLTA,BOTTONE_REGISTRA], [BOTTONE_INVITA], [BOTTONE_INFO]])
+    person.setState(p, -1)
 
+def restartAllUsers(msg):
+    qry = Person.query()
+    count = 0
+    for p in qry:
+        if (p.enabled): # or p.state>-1
+            restart(p)
+            tell(p.chat_id, msg)
+            sleep(0.100) # no more than 10 messages per second
+    logging.debug("Succeffully restarted users: " + str(count))
+    return count
 
-COUNTERS = []
+def restartTest(msg):
+    qry = Person.query(Person.chat_id==key.PINCO_PALLINO_CHAT_ID)
+    count = 0
+    for p in qry:
+        if (p.enabled): # or p.state>-1
+            tell(p.chat_id, msg)
+            restart(p)
+            sleep(0.100) # no more than 10 messages per second
+    logging.debug("Succeffully restarted users: " + str(count))
+    return count
 
-def resetCounter():
-    for name in COUNTERS:
-        c = Counter.get_or_insert(str(name))
-        c.name = name
-        c.counter = 0
-        c.put()
-
-def increaseCounter(c, i):
-    entry = Counter.query(Counter.name == c).get()
-    c = entry.counter
-    c = (c+i)
-    entry.counter = c
-    entry.put()
-    return c
-
-
-# ================================
-# ================================
-# ================================
-
-
-class DateCounter(ndb.Model):
-    date = ndb.DateProperty(auto_now_add=True)
-    people_counter = ndb.IntegerProperty()
-
-def addPeopleCount():
-    p = DateCounter.get_or_insert(str(datetime.now()))
-    p.people_counter = Person.query().count()
-    p.put()
-    return p
-
-# ================================
-# ================================
-# ================================
-
-
-class Product(ndb.Model):
-    chat_id = ndb.IntegerProperty(indexed=True)
-    product = ndb.StringProperty(indexed=True)
-    person_name = ndb.StringProperty()
-    entry_date = ndb.DateTimeProperty(auto_now=True)
-    location = ndb.GeoPtProperty()
-    contact = ndb.StringProperty()
-
-def getProduct(chat_id, product):
-    key = str(chat_id) + '_' + product
-    product = ndb.Key(Product, key).get()
-    return product
-
-def addProduct(chat_id, product, person_name, location, contact):
-    p = Product.get_or_insert(str(chat_id) + '_' + product)
-    p.chat_id = chat_id
-    p.product = product
-    p.person_name = person_name
-    p.location = location
-    p.contact = contact
-    p.put()
-    return p
-
-def getListProducts(product, p):
-    result = []
-    qry = Product.query(Product.product==product)
-    for r in qry:
-        if (r.chat_id!=p.chat_id):
-            distance = HaversineDistance(p.location,r.location)
-            result.append([r.person_name, distance, r.contact])
-    sort_table(result, 1)
-    return result
-
-def format_distance(dst):
-    if (dst>=100):
-        return str(round(dst, 0)) + " km"
-    if (dst>=10):
-        return str(round(dst, 1)) + " km"
-    if (dst>=1):
-        return str(round(dst, 2)) + " km"
-    return str(round(dst*1000, 0)) + " m"
-
-def sort_table(table, col=0):
-    return sorted(table, key=operator.itemgetter(col))
-
-def HaversineDistance(loc1, loc2):
-    """Method to calculate Distance between two sets of Lat/Lon."""
-    lat1 = loc1.lat
-    lon1 = loc1.lon
-    lat2 = loc2.lat
-    lon2 = loc2.lon
-    earth = 6371 #Earth's Radius in Kms.
-
-    #Calculate Distance based in Haversine Formula
-    dlat = math.radians(lat2-lat1)
-    dlon = math.radians(lon2-lon1)
-    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = earth * c
-    return d
-
-# ================================
-# ================================
-# ================================
-
-
-class Person(ndb.Model):
-    chat_id = ndb.IntegerProperty()
-    name = ndb.StringProperty()
-    last_name = ndb.StringProperty(default='-')
-    username = ndb.StringProperty(default='-')
-    state = ndb.IntegerProperty(default=-1, indexed=True)
-    last_mod = ndb.DateTimeProperty(auto_now=True)
-    location = ndb.GeoPtProperty()
-    contact = ndb.StringProperty()
-    enabled = ndb.BooleanProperty(default=True)
-
-
-def addPerson(chat_id, name):
-    p = Person.get_or_insert(str(chat_id))
-    p.name = name
-    p.chat_id = chat_id
-    p.put()
-    return p
-
-def setState(p, state):
-    p.state = state
-    p.put()
-
-def restart(person, txt=None):
-    reply_txt = (txt + '\n') if txt!=None else ''
-    if person.contact==None or person.location==None:
-        reply_txt += "Per far funzionare questo servizio abbiamo bisgono di conoscere la tua posizione e avere un tuo recapito telefonico.\n" \
-                     "Premi su IMPOSTAZIONI per inserire questi dati o HELP per ottenere maggiori informazioni."
-        tell(person.chat_id, reply_txt, kb=[['IMPOSTAZIONI'],['HELP']])
-        setState(person, -2)
-    else:
-        reply_txt += "Premi AVVIA se vuoi cercare o offrire prodotti."
-        tell(person.chat_id, reply_txt, kb=[['AVVIA'],['IMPOSTAZIONI'],['HELP']])
-        setState(person, -1)
-
-def handleSettings(p,txt=None):
-    reply_txt = (txt + '\n') if txt!=None else ''
-    if p.contact==None or p.location==None:
-        if p.contact==None and p.location==None:
-            reply_txt += 'Abbiamo bisogno della tua posizione e di un tuo recapito telefonico'
-        elif p.contact==None:
-            reply_txt += 'Abbiamo bisogno di un tuo recapito telefonico'
-        else:
-            reply_txt += 'Abbiamo bisogno della tua posizione'
-    else:
-        reply_txt += 'Abbiamo già la tua posizione e il tuo contatto ma puoi cambiarle'
-    tell(p.chat_id, reply_txt, kb=[['POSIZIONE','RECAPITO'],['TORNA INDIETRO']])
-    setState(p, -3)
-
-def setLocation(p, loc):
-    p.location =  ndb.GeoPt(loc['latitude'], loc['longitude'])
-    p.put()
-
-def setContact(p, contact):
-    p.contact =  contact
-    p.put()
 
 def init_user(p, cmd, name, last_name, username):
-    #if (p.name.decode('utf-8') != name.decode('utf-8')):
-    if (p.name != name):
+    if (p.name.encode('utf-8') != name):
         p.name = name
         p.put()
-    #if (p.last_name.decode('utf-8') != last_name.decode('utf-8')):
-    if (p.last_name != last_name):
+    if (p.last_name.encode('utf-8') != last_name):
         p.last_name = last_name
         p.put()
     if (p.username != username):
@@ -271,31 +210,63 @@ def get_time_string(date):
     newdate = date + timedelta(hours=1)
     return str(newdate).split(" ")[1].split(".")[0]
 
-def resetNullStatesUsers():
-    qry = Person.query()
-    count = 0
-    for p in qry:
-        if (p.state is None): # or p.state>-1
-            setState(p,-1)
-            count+=1
-    return count
-
-
-def broadcast(msg):
+def broadcast(msg, restart_user=False):
     qry = Person.query().order(-Person.last_mod)
     count = 0
     for p in qry:
         if (p.enabled):
             count += 1
-            tell(p.chat_id, "Udite udite..." + ' ' + msg)
+            if restart_user:
+                restart(p)
+            tell(p.chat_id, msg)
             sleep(0.100) # no more than 10 messages per second
     logging.debug('broadcasted to people ' + str(count))
 
+def getRecentRecordings(p):
+    recordings = ''
+    qry = Recording.query().order(-Recording.date_time).fetch(8) #Recording.chat_id > 0
+    for r in qry:
+        name = person.getPersonByChatId(r.chat_id).name.encode('utf-8')
+        recordings += '/rec_' + str(r.key.id()) + ' - ' + name + ' - ' + str(r.date_time.date()) + '\n'
+    tell(p.chat_id,
+         "ULTIME REGISTRAZIONI:\n\n" + recordings +
+         "\nPremi su uno dei link sopra per ascoltare la registrazione corrispondente.",
+         kb=[[BOTTONE_INDIETRO]])
+
+def getAllRecordings(p):
+    recordings = ''
+    qry = Recording.query(Recording.chat_id > 0)
+    for r in qry:
+        name = person.getPersonByChatId(r.chat_id).name
+        recordings += '/rec_' + str(r.key.id()) + ' - ' + name + ' - ' + str(r.date_time.date()) + '\n'
+    tell(p.chat_id,
+         "ULTIME REGISTRAZIONI:\n\n" + recordings +
+         "\nPremi su uno dei link sopra per ascoltare la registrazione corrispondente.",
+         kb=[[BOTTONE_INDIETRO]])
+
+def getLastContibutors(daysAgo):
+    dateThreshold = time_util.get_time_days_ago(daysAgo)
+    names = set()
+    count = 0
+    qry = Recording.query(Recording.date_time > dateThreshold)
+    for r in qry:
+        if r.chat_id<=0:
+            continue
+        name = person.getPersonByChatId(r.chat_id).name
+        names.add(name)
+        count += 1
+    namesString = ', '.join([x.encode('utf-8') for x in names])
+    return count, namesString
+
+def sendNewRecordingNotice(p):
+    rec = recording.getRecording(p.last_recording_file_id)
+    tell(key.FEDE_CHAT_ID, "New recording: /rec_" + str(rec.key.id()) + " from user: @" + p.username)
+
 def getInfoCount():
     c = Person.query().count()
-    msg = "Attualmente siamo in " + str(c) + " persone iscritte a OpenGarden!" +\
-          "Vogliamo crescere assieme!" + "Invita altre persone ad aunirsi!"
-    return msg
+    #msg = "Siamo ora " + str(c) + " persone iscritte a DialectBot! " \
+    #      "Vogliamo crescere assieme! Invita altre persone ad unirsi!"
+    return c
 
 def tellmyself(p, msg):
     tell(p.chat_id, "Udiete udite... " + msg)
@@ -309,48 +280,25 @@ def tell_fede(msg):
         tell(key.FEDE_CHAT_ID, "prova " + str(i))
         sleep(0.1)
 
-def tell(chat_id, msg, kb=None, hideKb=True):
-    try:
-        if kb:
-            resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
-                'chat_id': chat_id,
-                'text': msg, #.encode('utf-8'),
-                'disable_web_page_preview': 'true',
-                #'reply_to_message_id': str(message_id),
-                'reply_markup': json.dumps({
-                    #'one_time_keyboard': True,
-                    'resize_keyboard': True,
-                    'keyboard': kb,  # [['Test1','Test2'],['Test3','Test8']]
-                    'reply_markup': json.dumps({'hide_keyboard': True})
-                }),
-            })).read()
+def tell(chat_id, msg, kb=None, markdown=False, inlineKeyboardMarkup=False):
+
+    replyMarkup = {}
+    replyMarkup['resize_keyboard'] = True
+    if kb:
+        if inlineKeyboardMarkup:
+            replyMarkup['inline_keyboard'] = kb
         else:
-            if hideKb:
-                resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
-                    'chat_id': str(chat_id),
-                    'text': msg, #.encode('utf-8'),
-                    #'disable_web_page_preview': 'true',
-                    #'reply_to_message_id': str(message_id),
-                    'reply_markup': json.dumps({
-                        #'one_time_keyboard': True,
-                        'resize_keyboard': True,
-                        #'keyboard': kb,  # [['Test1','Test2'],['Test3','Test8']]
-                        'reply_markup': json.dumps({'hide_keyboard': True})
-                }),
-                })).read()
-            else:
-                resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
-                    'chat_id': str(chat_id),
-                    'text': msg, #.encode('utf-8'),
-                    #'disable_web_page_preview': 'true',
-                    #'reply_to_message_id': str(message_id),
-                    'reply_markup': json.dumps({
-                        #'one_time_keyboard': True,
-                        'resize_keyboard': True,
-                        #'keyboard': kb,  # [['Test1','Test2'],['Test3','Test8']]
-                        'reply_markup': json.dumps({'hide_keyboard': False})
-                }),
-                })).read()
+            replyMarkup['keyboard'] = kb
+
+    try:
+        resp = urllib2.urlopen(BASE_URL + 'sendMessage', urllib.urlencode({
+            'chat_id': chat_id,
+            'text': msg,  # .encode('utf-8'),
+            'disable_web_page_preview': 'true',
+            'parse_mode': 'Markdown' if markdown else '',
+            # 'reply_to_message_id': str(message_id),
+            'reply_markup': json.dumps(replyMarkup),
+        })).read()
         logging.info('send response: ')
         logging.info(resp)
     except urllib2.HTTPError, err:
@@ -360,86 +308,262 @@ def tell(chat_id, msg, kb=None, hideKb=True):
             p.put()
             logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
 
-# ================================
-# ================================
-# ================================
 
-TOKEN_DURATION_MIN = 100
-TOKEN_DURATION_SEC = TOKEN_DURATION_MIN*60
+def sendVoiceFile(chat_id):
+    try:
+        #img = urllib2.urlopen('https://dl.dropboxusercontent.com/u/12016006/tmp/image.jpg').read()
+        #voice = urllib2.urlopen('https://dl.dropboxusercontent.com/u/12016006/tmp/squagliare.ogg').read()
+        voice = urllib2.urlopen('https://dl.dropboxusercontent.com/u/12016006/tmp/acqua.ogg').read()
+        resp = multipart.post_multipart(
+                BASE_URL + 'sendVoice',
+                [('chat_id', str(chat_id)),],
+                [('voice', 'voice.ogg', voice),]
+        )
+        logging.info('send response: ')
+        logging.info(resp)
+        respParsed = json.loads(resp)
+        logging.debug('file id: ' + str(respParsed['result']['voice']['file_id']))
+        #logging.debug('keys: ' + resp.keys())
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id==chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
 
-class Token(ndb.Model):
-    token_id = ndb.StringProperty()
-    start_daytime = ndb.DateTimeProperty()
+def sendLocation(chat_id, loc):
+    try:
+        resp = urllib2.urlopen(BASE_URL + 'sendLocation', urllib.urlencode({
+            'chat_id': chat_id,
+            'latitude': loc['latitude'],
+            'longitude': loc['longitude'],
+            #'reply_markup': json.dumps({
+                #'one_time_keyboard': True,
+                #'resize_keyboard': True,
+                #'keyboard': kb,  # [['Test1','Test2'],['Test3','Test8']]
+                #'reply_markup': json.dumps({'hide_keyboard': True})
+            #}),
+        })).read()
+        logging.info('send location: ')
+        logging.info(resp)
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id==chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
 
-def createToken():
-    now = datetime.now()
-    token_id = channel.create_channel(str(now), duration_minutes=TOKEN_DURATION_MIN)
-    token = Token.get_or_insert(token_id)
-    token.start_daytime = now
-    token.token_id = token_id
-    token.put()
-    return token_id
+def sendTranslation(chat_id, rec):
+    translation = rec.translation
+    if translation:
+        tell(chat_id, "Traduzione: " + translation.encode('utf-8'))
+    else:
+        tell(chat_id, "Nessuna traduzione.")
 
-def updateDashboard():
-    #logging.debug('updateDashboard')
-    data = {} #getDashboardData()
-    qry = Token.query()
-    removeKeys = []
-    now = datetime.now()
-    for t in qry:
-        duration_sec = (now - t.start_daytime).seconds
-        if (duration_sec>TOKEN_DURATION_SEC):
-            removeKeys.append(t.token_id)
+def sendVoiceFileId(chat_id, file_id):
+    try:
+        resp = urllib2.urlopen(BASE_URL + 'sendVoice', urllib.urlencode({
+            'chat_id': str(chat_id),
+            'voice': str(file_id), #.encode('utf-8'),
+        })).read()
+        logging.info('send voice: ')
+        logging.info(resp)
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id==chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
         else:
-            channel.send_message(t.token_id, json.dumps(data))
-    for k in removeKeys:
-        ndb.Key(Token, k).delete()
+            logging.info('Error occured: ' + str(err))
+
+def sendAudio(chat_id, file_id):
+    try:
+        resp = urllib2.urlopen(BASE_URL + 'sendAudio', urllib.urlencode({
+            'chat_id': str(chat_id),
+            'audio': str(file_id), #.encode('utf-8'),
+            'performer': "From Vivaio Acustico delle Lingue e dei Dialetti d'Italia",
+            'title': "From Vivaio Acustico delle Lingue e dei Dialetti d'Italia"
+        })).read()
+        logging.info('send audio: ')
+        logging.info(resp)
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id==chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
+        else:
+            logging.info('Error occured: ' + str(err))
+
+def sendVoiceAndLocation(p, id):
+    rec = Recording.get_by_id(id)
+    if rec is None:
+        tell(p.chat_id, 'No recording found!')
+    else:
+        tell(p.chat_id, 'Voice:')
+        sendVoiceFileId(p.chat_id, rec.file_id)
+        tell(p.chat_id, 'Location:')
+        loc = {'latitude': rec.location.lat, 'longitude': rec.location.lon}
+        sendLocation(p.chat_id, loc)
+        sendTranslation(p.chat_id, rec)
+
+
+def getFile(file_id):
+    try:
+        resp = urllib2.urlopen(BASE_URL + 'getFile', urllib.urlencode({
+            'file_id': file_id,
+        })).read()
+        logging.info('asked for file: ')
+        logging.info(resp)
+        file_path = json.loads(resp)['result']['file_path']
+        logging.info('file path:' + file_path)
+        file = urllib2.urlopen(BASE_URL_FILE + file_path).read()
+        return file
+    except urllib2.HTTPError, err:
+        logging.info("exception:" + str(err))
+
+def format_distance(dst):
+    if (dst>=10):
+        return str(round(dst, 0)) + " Km"
+    if (dst>=1):
+        return str(round(dst, 1)) + " Km"
+    return str(int(dst*1000)) + " m"
+
+def format_and_comment_distance(dst):
+    fmt_dst = format_distance(dst)
+    if (dst>=500):
+        return fmt_dst + ". Sei molto lontano!"
+    if (dst>=250):
+        return fmt_dst + ". Puoi fare di meglio!"
+    if (dst>=100):
+        return fmt_dst + ". Non male!"
+    if (dst>=50):
+        return fmt_dst + ". Brava/o ci sei andata/o molto vicino!"
+    if (dst>=15):
+        return fmt_dst + ". Bravissima/o hai indovinato!"
+    return fmt_dst + ". Wow, Strepitoso"
+
 
 # ================================
 # ================================
+# ================================
+
+def sendVoiceUrl(chat_id, url):
+    try:
+        voice = urllib2.urlopen(url).read()
+        resp = multipart.post_multipart(
+                BASE_URL + 'sendVoice',
+                [('chat_id', str(chat_id)),],
+                [('voice', 'voice.ogg', voice),]
+        )
+        logging.info('send response: ')
+        logging.info(resp)
+        #respParsed = json.loads(resp)
+        #logging.debug('file id: ' + str(respParsed['result']['voice']['file_id']))
+        #file_id = respParsed['result']['voice']['file_id']
+        #rec.url = None
+        #rec.file_id = file_id
+        #rec.put()
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id==chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
+
+# ================================
+# ================================
+# ================================
+
+def sendRecording(chat_id, rec):
+    if rec.file_id:
+        sendVoiceFileId(chat_id, rec.file_id)
+    else:
+        logging.debug("Setting last recording via url: " + rec.url)
+        sendVoiceUrl(chat_id, rec.url)
+
+def dealWithRandomRecording(p):
+    randomRecording = recording.getRandomRecording()
+    if not randomRecording:
+        tell(p.chat_id, "Scusa, non abbiamo altre registrazioni disponibili, chidi ai tuoi amici di inserirne altre", kb=[[BOTTONE_ANNULLA]])
+        restart(p)
+    else:
+        tell(p.chat_id, "Ascolta l'audio seguente e inserisci la posizione geografica da dove credi che provenga")
+        sendRecording(p.chat_id, randomRecording)
+        person.setLastRecording(p,randomRecording)
+        logging.debug("Last recording id: " + str(p.last_recording_file_id))
+        tell(p.chat_id, ISTRUZIONI_POSIZIONE_GUESS, kb=[["ASCOLTA NUOVA REGISTRAZIONE"],[BOTTONE_INDIETRO]])
+        person.setState(p, 31)
+
+def dealWithGuessedLocation(p,guessed_loc):
+    lat_guessed = guessed_loc['latitude']
+    lon_guessed = guessed_loc['longitude']
+    gold_loc = person.getLastRecordingLocation(p)
+    lat_gold = gold_loc['latitude']
+    lon_gold = gold_loc['longitude']
+    logging.debug('Gold loc: ' + str(gold_loc))
+    logging.debug('Guessed loc: ' + str(guessed_loc))
+    luogo = '*' + geoUtils.getLocationFromPosition(lat_gold, lon_gold).address.encode('utf-8') + '*'
+    #dist = geoUtils.HaversineDistance(lat_guessed, lon_guessed, lat_gold, lon_gold)
+    dist = geoUtils.distance((lat_guessed, lon_guessed), (lat_gold, lon_gold))
+    distFormatted = format_and_comment_distance(dist)
+    tell(p.chat_id, "Distanza: " + distFormatted + "\n" + "Questo il luogo preciso: " + luogo, markdown=True)
+    rec = recording.getRecordingCheckIfUrl(p.last_recording_file_id)
+    sendLocation(p.chat_id, gold_loc)
+    sendTranslation(p.chat_id, rec)
+
+def dealWithPlaceAndMicInstructions(p):
+    luogo = '*' + geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8') + '*'
+    tell(p.chat_id, "Il luogo della registrazione è impostato su: " + luogo + ".\n\n" +
+         "Se il luogo non è corretto premi su *CAMBIA LUOGO*.\n" +
+         "Quando sei pronta/o pronuncia una frase nel dialetto del luogo inserito, ad esempio un proverbio o un modo di dire, "
+         "tenendo premuto il tasto del microfono.", kb=[['CAMBIA LUOGO'],[BOTTONE_INDIETRO]], markdown=True)
+    person.setState(p, 20)
+
+def dealWithFindClosestRecording(p, location):
+    rec = recording.getClosestRecording(location['latitude'], location['longitude'])
+    if rec:
+        tell(p.chat_id, "Trovata la seguente registrazione: ")
+        sendRecording(p.chat_id, rec)
+        loc = {'latitude': rec.location.lat, 'longitude': rec.location.lon}
+        sendLocation(p.chat_id, loc)
+        sendTranslation(p.chat_id, rec)
+        luogo = '*' + geoUtils.getLocationFromPosition(rec.location.lat, rec.location.lon).address.encode('utf-8') + '*'
+        dst = geoUtils.distance((location['latitude'], location['longitude']),(rec.location.lat,rec.location.lon))
+        tell(p.chat_id, "Luogo della registrazione: " + luogo +
+             ". La distanza dal luogo inserito è di: " + format_distance(dst) + ".", markdown=True)
+        tell(p.chat_id, "Se vuoi cercare un'altra registrazione inserisci una nuova località altrimenti premi 'ANNULLA'.")
+    else:
+        tell(p.chat_id, "Non ho trovato nessuna registrazione nelle vicinanze della posizione inserita. Riprova.\n" +
+              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_ANNULLA]])
+# ================================
+# ================================
+# ================================
+
+ASCOLTA_MSG = \
+"""
+Premi su:
+- INDOVINA LUOGO se vuoi ascoltare una registrazione qualsiasi e indovinare da dove proviene
+- CERCA LUOGO se vuoi cercare una registrazione di un determinato luogo
+- REGISTRAZIONI RECENTI per ascoltare le registrazioni più recenti
+- TUTTE LE REGISTRAZIONI per ascoltare tutte le registrazioni
+"""
+
+def goToAscolta(p):
+    tell(p.chat_id, ASCOLTA_MSG,
+         kb=[[BOTTONE_INDOVINA_LUOGO, BOTTONE_CERCA_LUOGO], [BOTTONE_RECENTI, BOTTONE_TUTTE], [BOTTONE_INDIETRO]])
+    person.setState(p, 30)
+
+
+# ================================
+# HANDLERS
 # ================================
 
 class MeHandler(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
         self.response.write(json.dumps(json.load(urllib2.urlopen(BASE_URL + 'getMe'))))
-
-class DashboardHandler(webapp2.RequestHandler):
-    def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        data = {} #getDashboardData()
-        token_id = createToken()
-        data['token'] = token_id
-        data['today_events'] = json.dumps({}) #getTodayTimeline()
-        logging.debug('Requsts: ' + str(data['today_events']))
-        template = DASHBOARD_DIR_ENV.get_template('PickMeUp.html')
-        logging.debug("Requested Dashboard. Created new token.")
-        self.response.write(template.render(data))
-
-class GetTokenHandler(webapp2.RequestHandler):
-    def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        token_id = createToken()
-        logging.debug("Token handler. Created a new token.")
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps({'token': token_id}))
-
-class DashboardConnectedHandler(webapp2.RequestHandler):
-    def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        client_id = self.request.get('from')
-        logging.debug("Channel connection request from client id: " + client_id)
-
-class DashboardDisconnectedHandler(webapp2.RequestHandler):
-    def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        client_id = self.request.get('from')
-        logging.debug("Channel disconnection request from client id: " + client_id)
-
-class GetUpdatesHandler(webapp2.RequestHandler):
-    def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        self.response.write(json.dumps(json.load(urllib2.urlopen(BASE_URL + 'getUpdates'))))
 
 
 class SetWebhookHandler(webapp2.RequestHandler):
@@ -449,6 +573,31 @@ class SetWebhookHandler(webapp2.RequestHandler):
         if url:
             self.response.write(
                 json.dumps(json.load(urllib2.urlopen(BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))))
+
+class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
+    def get(self):
+        urlfetch.set_default_fetch_deadline(60)
+        msg = getWeeklyMessage()
+        broadcast(msg, restart_user=True)
+
+def getWeeklyMessage():
+    people_count = getInfoCount()
+    contr_count, contr_namesString = getLastContibutors(7)
+    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n\n"
+    if contr_count > 0:
+        if contr_count == 1:
+            msg += "Nell'ultima settimana abbiamo ricevuto una registrazione! " \
+                   "Un grande ringraziamento a " + contr_namesString + '! ' + CLAPPING_HANDS
+        else:
+            msg += "Nell'ultima settimana abbiamo ricevuto " + str(contr_count) + \
+                   " registrazioni! " \
+                   "Un grande ringraziamento a " + contr_namesString + '! ' + CLAPPING_HANDS * contr_count
+    else:
+        msg += "Purtroppo questa settimana non abbiamo avuto nessun nuovo contributo " + FROWNING_FACE
+
+    msg += "\n\nAiutaci a crescere: aggiungi nuove registrazioni del tuo dialetto tramite il bot " \
+           "e invita altre persone ad unirsi! " + SMILY
+    return msg
 
 # ================================
 # ================================
@@ -465,186 +614,307 @@ class WebhookHandler(webapp2.RequestHandler):
         self.response.write(json.dumps(body))
 
         # update_id = body['update_id']
+        if 'message' not in body:
+            return
         message = body['message']
         #message_id = message.get('message_id')
         # date = message.get('date')
         if "chat" not in message:
-            return;
+            return
         # fr = message.get('from')
         chat = message['chat']
         chat_id = chat['id']
         if "first_name" not in chat:
-            return;
+            return
         text = message.get('text').encode('utf-8') if "text" in message else ""
         name = chat["first_name"].encode('utf-8')
         last_name = chat["last_name"].encode('utf-8') if "last_name" in chat else "-"
         username = chat["username"] if "username" in chat else "-"
         location = message["location"] if "location" in message else None
-        logging.debug('location: ' + str(location))
+        voice = message["voice"] if "voice" in message else None
+        audio = message["audio"] if "audio" in message else None
+        document = message["document"] if "document" in message else None
+        #logging.debug('location: ' + str(location))
 
-        def reply(msg=None, kb=None, hideKb=True):
-            tell(chat_id, msg, kb, hideKb)
+        def reply(msg=None, kb=None, markdown=False, inlineKeyboardMarkup=False):
+            tell(chat_id, msg, kb, markdown, inlineKeyboardMarkup)
 
         p = ndb.Key(Person, str(chat_id)).get()
 
         if p is None:
             # new user
-            tell_masters("New user: " + name)
-            p = addPerson(chat_id, name)
             logging.info("Text: " + text)
             if text == '/help':
                 reply(ISTRUZIONI)
-            elif text in ['/start','START']:
-                reply("Ciao " + name + ", " + "benvenuto/a!")
+            if text.startswith("/start"):
+                tell_masters("New user: " + name)
+                p = person.addPerson(chat_id, name)
+                reply("Ciao " + name + ", " + "benvenuta/o!")
                 init_user(p, text, name, last_name, username)
                 restart(p)
                 # state = -1 or -2
             else:
-                reply("Qualcosa non ha funzionato... contatta kercos@gmail.com")
+                reply("Qualcosa non ha funzionato... prova a contattarmi cliccando su @kercos")
         else:
             # known user
-            if text=='/state':
-              reply("Sei nello stato " + str(p.state) + ": " + STATES[p.state]);
+            person.updateUsername(p, username)
+            if text.startswith("/start"):
+                reply("Ciao " + name + ", " + "ben ritrovata/o!")
+                init_user(p, text, name, last_name, username)
+                restart(p)
+                # state = -1 or -2
+            elif text=='/state':
+              if p.state in STATES:
+                  reply("You are in state " + str(p.state) + ": " + STATES[p.state])
+              else:
+                  reply("You are in state " + str(p.state))
             elif p.state == -1:
                 # INITIAL STATE
-                if text in ['/help','HELP']:
+                if text in ['/help', BOTTONE_INFO]:
                     reply(ISTRUZIONI)
-                elif text.endswith('AVVIA'):
-                    reply('Premi CERCO o OFFRO se vuoi cercare o offrire prodotti', kb = [['CERCO','OFFRO'],[BOTTONE_ANNULLA]])
-                    setState(p,0)
-                elif text.endswith('IMPOSTAZIONI'):
-                    handleSettings(p)
-                elif chat_id in key.MASTER_CHAT_ID:
-                    if text == '/resetusers':
-                        logging.debug('reset user')
-                        c = resetNullStatesUsers()
-                        reply("Reset states of users: " + str(c))
-                    elif text=='/infocount':
-                        reply(getInfoCount())
-                    elif text == '/resetcounters':
-                        resetCounter()
-                    elif text == '/test':
-                        logging.debug('test')
-                        #deferred.defer(tell_fede, "Hello, world!")
-                    elif text.startswith('/broadcast ') and len(text)>11:
-                        msg = text[11:] #.encode('utf-8')
-                        deferred.defer(broadcast, msg)
-                    elif text.startswith('/self ') and len(text)>6:
-                        msg = text[6:] #.encode('utf-8')
-                        tellmyself(p,msg)
+                elif text == BOTTONE_INVITA:
+                    reply('Inoltra il seguente messaggio:')
+                    reply(MESSAGE_FOR_FRIENDS)
+                elif text==BOTTONE_REGISTRA:
+                    if p.location:
+                        dealWithPlaceAndMicInstructions(p)
                     else:
-                        reply('Scusa, capisc solo /help /start '
+                        reply("Questa è la tua prima registrazione: "
+                              "è necessario che tu inserisca il luogo del dialetto che vuoi registrare.\n" +
+                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+                        person.setState(p,-2)
+                elif text==BOTTONE_ASCOLTA:
+                    goToAscolta(p)
+                    # state 30
+                elif chat_id in key.MASTER_CHAT_ID:
+                    if text == '/test':
+                        reply('test')
+                        #reply(geoUtils.getLocationTest())
+                        #taskqueue.add(url='/worker', params={'key': key})
+                        #geoUtils.test_Google_Map_Api()
+                    elif text == '/testContactAndLocation':
+                        reply("Test contatto e location", kb=[[BOTTONE_CONTACT], [BOTTONE_LOCATION]])
+                    elif text == '/testInlineKeyboard':
+                        reply("Test contatto e location", kb=[[BOTTONE_CALLBACK1,BOTTONE_CALLBACK2],[BOTTONE_CALLBACK3]], inlineKeyboardMarkup=True)
+                    elif text == '/testUnicode':
+                        txt = geoUtils.getLocationTest().address.encode('utf-8')
+                        #txt = "Questa è una frase con unicode"
+                        reply(txt + " " + str(type(txt)) )
+                    elif text== '/infoCount':
+                        c = getInfoCount()
+                        reply("Number of users: " + str(c))
+                    elif text == '/restartUsers':
+                        text = "Nuova interfaccia e nuove funzionalità :)\n" \
+                               "Ora puoi inserire le località digitando il nome del posto (e.g, Perugia).\n" \
+                               "Inoltre puoi cercare registrazioni in prossimità di un luogo.\n" \
+                               "Buon ascolto e buona registrazione!"
+                        deferred.defer(restartAllUsers, text) #'New interface :)')
+                        #deferred.defer(restartTest, text) #'New interface :)')
+                        logging.debug('restarted users')
+                    elif text == '/voice':
+                        sendVoiceFile(p.chat_id)
+                    elif text == '/importVivaldi':
+                        #logging.debug('nothing')
+                        recording.importVivaldi()
+                    elif text == '/countVivaldi':
+                        c = recording.countVivaldi()
+                        reply('Vivaldi recs: ' + str(c))
+                    elif text == '/deleteVivaldi':
+                        recording.deleteVivaldi()
+                        reply('Deleted Vivaldi recs.')
+                    elif text == '/deleteApproxLoc':
+                        recording.deleteLocationApprox()
+                    elif text == '/initApproxLoc':
+                        recording.initializeApproxLocations()
+                        reply('Reinitialized approx locations. ')
+                    elif text.startswith('/rec_'):
+                        rec_id = long(text[5:])
+                        sendVoiceAndLocation(p, rec_id)
+                    elif text == '/remFormatVoice':
+                        c = recording.removeFormatVoice()
+                        reply("removed rec format voice: " + str(c))
+                    elif text.startswith('/broadcast ') and len(text)>11:
+                        msg = text[11:]
+                        deferred.defer(broadcast, msg, restart_user=False)
+                    elif text.startswith('/restartBroadcast ') and len(text) > 18:
+                        msg = text[18:]
+                        deferred.defer(broadcast, msg, restart_user=True)
+                    elif text.startswith('/self ') and len(text)>6:
+                        msg = text[6:]
+                        reply(msg)
+                    elif text=='/lastContributors':
+                        count, namesString = getLastContibutors(300)
+                        msg = "Contributors: " + str(count) + "\nNames: " + namesString
+                        reply(msg)
+                    elif text=='/testWeeklyMessage':
+                        msg = getWeeklyMessage()
+                        reply(msg)
+                    else:
+                        reply('Scusa, capisco solo /help /start '
                               'e altri comandi segreti...')
                     #setLanguage(d.language)
                 else:
                     reply("Scusa non capisco quello che hai detto.\n"
                           "Usa i pulsanti sotto o premi HELP per avere informazioni.")
             elif p.state == -2:
-                # IMPOSTAZIONI
-                if text in ['/help','HELP']:
-                    reply(ISTRUZIONI)
-                if text.endswith('IMPOSTAZIONI'):
-                    handleSettings(p)
-            elif p.state == -3:
-                # POSIZIONE/CONTATTO
-                if text.endswith('TORNA INDIETRO'):
-                    restart(p)
-                elif text.endswith('POSIZIONE'):
-                    setState(p,-4)
-                    reply("Usa la graffetta in basso per inviarmi la tua posizione.", kb = [['TORNA INDIETRO']])
-                elif text.endswith('RECAPITO'):
-                    setState(p,-5)
-                    reply("Inserisci le tue informazioni (telefono ed eventualmente un indirizzo email).",
-                          kb = [['TORNA INDIETRO']])
-            elif p.state == -4:
                 # POSIZIONE
-                if location!=None:
-                    setLocation(p,location)
-                    text = 'Grazie per averci inviato la tua posizione!'
-                    if p.contact==None:
-                        handleSettings(p,txt=text)
+                if text == BOTTONE_ANNULLA:
+                    restart(p, "Operazione annullata.")
+                elif location!=None:
+                    person.setLocation(p,location)
+                    luogo = geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8')
+                    dealWithPlaceAndMicInstructions(p)
+                    #state 20
+                elif text.startswith('('):
+                    text_split = text[1:-1].split(",")
+                    loc = {'latitude': float(text_split[0]), 'longitude': float(text_split[1])}
+                    person.setLocation(p,loc)
+                    sendLocation(p.chat_id, loc)
+                    dealWithPlaceAndMicInstructions(p)
+                    #state 20
+                else:
+                    place = geoUtils.getLocationFromName(text)
+                    if place:
+                        loc = {'latitude': place.latitude, 'longitude': place.longitude}
+                        person.setLocation(p,loc)
+                        dealWithPlaceAndMicInstructions(p)
+                         #state 20
                     else:
-                        restart(p,txt=text)
-                elif text.endswith('TORNA INDIETRO'):
-                    handleSettings(p)
-                else:
-                    reply("Scusa non capisco quello che hai detto.\n"
-                          "Ho bisogno di sapere la tua posizione.\n"
-                          "Usa la graffetta in basso per inviarmela.", kb = [['TORNA INDIETRO']])
-            elif p.state == -5:
-                if text.endswith('TORNA INDIETRO'):
-                    handleSettings(p)
-                elif len(text)==0:
-                    reply("Ho bisogno di sapere la tua posizione.\n"
-                          "Usa la graffetta in basso per inviarmela.", kb = [['TORNA INDIETRO']])
-                else:
-                    setContact(p,text)
-                    text = 'Grazie per averci inviato il tuo contatto!'
-                    if p.location==None:
-                        handleSettings(p,txt=text)
-                    else:
-                        restart(p,txt=text)
-                # CONTATTO
-            elif p.state == 0:
-                # AFTER TYPING START
-                if text.endswith("Annulla"):
-                    reply("Operazione annullata.")
-                    restart(p);
-                    # state = -1
-                elif text.endswith("CERCO"):
-                    setState(p, 20)
-                    reply("Bene! Quale prodotti cerchi?", kb=PRODOTTI_ANNULLA)
-                elif text.endswith("OFFRO"):
-                    setState(p, 30)
-                    reply("Bene! Quale prodotti offri?", kb=PRODOTTI_ANNULLA)
-                elif text.endswith("Annulla"):
-                    reply("Operazione annullata.")
-                    restart(p);
-                    # state = -1
-                else:
-                    reply("Scusa non capisco quello che hai detto")
+                        reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
+                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
             elif p.state == 20:
-                # CERCO PRODOTTI
-                if text.endswith("Annulla"):
-                    reply("Operazione annullata.")
-                    restart(p);
+                # REGISTRA
+                if text == BOTTONE_ANNULLA:
+                    restart(p, "Operazione annullata.")
                     # state = -1
-                elif text in PRODOTTI_FLAT:
-                    table = getListProducts(text, p)
-                    if len(table)==0:
-                        reply('Nessuna offerta trovata per questo prodotto')
-                    else:
-                        text = '';
-                        for row in table:
-                            text += row[0] + ' ' + format_distance(row[1]) + " Contatto: " + row[2] + "\n"
-                        reply(text)
+                elif text == "CAMBIA LUOGO":
+                    reply("Ok, cambiamo il luogo. Inserisci il nuovo luogo del dialetto che vuoi registrare. " +
+                          ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+                    person.setState(p,-2)
+                    # state -2
+                elif voice!=None:
+                    reply("Ti preghiamo di ascoltare e confermare che la registrazione sia ben riuscita.",
+                          kb=[['OK'],['REGISTRA DI NUOVO'],[BOTTONE_ANNULLA]])
+                    file_id = voice['file_id']
+                    #sendVoiceFileId(p.chat_id, file_id)
+                    rec = recording.addRecording(p, file_id)
+                    person.setLastRecording(p, rec)
+                    person.setState(p, 21)
+                # elif audio!=None:
+                #     reply("Ti preghiamo di ascoltare e confermare che la registrazione sia ben riuscita.", kb=[['OK'],['REGISTRA DI NUOVO']])
+                #     file_id = audio['file_id']
+                #     #sendAudio(p.chat_id, file_id)
+                #     rec = recording.addRecording(p, file_id, voice=False)
+                #     person.setLastRecording(p, rec)
+                #     person.setState(p, 21)
+                # elif document!=None:
+                #     file_id = document['file_id']
+                #     reply("You have sent a doc")
+                #     #sendVoice(p.chat_id, file_id)
+                #     sendAudio(p.chat_id, file_id)
+                #     restart(p)
                 else:
-                    reply("Scusa non capisco che prodotto cerchi, ti prego di premere uno dei pulsanti sotto.")
+                    reply(FROWNING_FACE + " Scusa non capisco quello che hai detto.")
+            elif p.state == 21:
+                # CONFIRM RECORDING
+                if text == BOTTONE_ANNULLA:
+                    restart(p, "Operazione annullata.")
+                    # state = -1
+                elif text == 'OK':
+                    reply("Potresti lasciare una traduzione in italiano della registrazione?", kb=[['SI','NO']])
+                    person.setState(p, 22)
+                elif text == 'REGISTRA DI NUOVO':
+                    person.removeLastRecording(p)
+                    reply("Quando sei pronta/o pronuncia una frase nel dialetto del luogo inserito, ad esempio un proverbio o un modo di dire, "
+                          "tenendo premuto il tasto del microfono.", kb=[['CAMBIA LUOGO'],[BOTTONE_ANNULLA]])
+                    person.setState(p, 20)
+                else:
+                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
+            elif p.state == 22:
+                # CHECK IF AVAILABLE FOR TRANSLATION
+                if text == 'SI':
+                    reply("Inserisci la traduzione in italiano della registrazione", kb=[[BOTTONE_ANNULLA]])
+                    person.setState(p, 23)
+                elif text == 'NO':
+                    reply("Grazie per il tuo contributo!")
+                    #sendNewRecordingNotice(p)
+                    restart(p)
+                else:
+                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
+            elif p.state == 23:
+                # INSERT TRANSLATION
+                recording.addTranslation(p.last_recording_file_id, text)
+                reply("Grazie per il tuo contributo!")
+                sendNewRecordingNotice(p)
+                restart(p)
             elif p.state == 30:
-                # OFFRO PRODOTTI
-                if text.endswith("Annulla"):
-                    reply("Operazione annullata.")
-                    restart(p);
+                if text == BOTTONE_INDIETRO:
+                    restart(p, "Operazione annullata.")
                     # state = -1
-                elif text in PRODOTTI_FLAT:
-                    product = getProduct(p.chat_id,text)
-                    if (product!=None):
-                        reply('Hai già inserito questo prodotto, inseriscine un altro o premi ANNULLA')
-                    else:
-                        addProduct(p.chat_id, text, p.name, p.location, p.contact)
-                        restart(p,txt='Grazie per aver inserito un prodotto!')
+                elif text== BOTTONE_INDOVINA_LUOGO:
+                    dealWithRandomRecording(p)
+                    # state 31
+                elif text== BOTTONE_CERCA_LUOGO:
+                    reply(ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_INDIETRO]])
+                    person.setState(p, 32)
+                    # state 32
+                elif text == BOTTONE_RECENTI:
+                    getRecentRecordings(p)
+                    person.setState(p, 33)
+                    # state 33
+                elif text == BOTTONE_TUTTE:
+                    getAllRecordings(p)
+                    person.setState(p, 33)
+                    # state 33
+            elif p.state == 31:
+                # ASCOLTA - INDOVINA LUOGO
+                if text == BOTTONE_INDIETRO:
+                    restart(p, "Operazione annullata.")
+                    # state = -1
+                elif text=="ASCOLTA NUOVA REGISTRAZIONE":
+                    dealWithRandomRecording(p)
+                    # state 31
+                elif location!=None:
+                    dealWithGuessedLocation(p,location)
                 else:
-                    reply("Scusa non capisco che prodotto cerchi, ti prego di premere uno dei pulsanti sotto.")
+                    place = geoUtils.getLocationFromName(text)
+                    if place:
+                        guessed_loc = {'latitude': place.latitude, 'longitude': place.longitude}
+                        dealWithGuessedLocation(p, guessed_loc)
+                    else:
+                        reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
+                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+            elif p.state == 32:
+                #ASCOLTA - RICERCA LUOGO
+                if location!=None:
+                    dealWithFindClosestRecording(p, location)
+                elif text == BOTTONE_INDIETRO:
+                    restart(p)
+                else:
+                    place = geoUtils.getLocationFromName(text)
+                    if place:
+                        loc = {'latitude': place.latitude, 'longitude': place.longitude}
+                        dealWithFindClosestRecording(p, loc)
+                    else:
+                        reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
+                              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_ANNULLA]])
+            elif p.state == 33:
+                # REGISTRAZIONI RECENTI
+                if text== BOTTONE_INDIETRO:
+                    goToAscolta(p)
+                elif text.startswith('/rec_'):
+                    rec_id = long(text[5:])
+                    sendVoiceAndLocation(p, rec_id)
+                else:
+                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
             else:
-                reply("Se è verificato un problemino... segnalamelo mandando una mail a kercos@gmail.com")
+                reply("Se è verificato un problemino... segnalalo scrivendo a @kercos")
 
 app = webapp2.WSGIApplication([
     ('/me', MeHandler),
-    ('/dashboard', DashboardHandler),
 #    ('/_ah/channel/connected/', DashboardConnectedHandler),
 #    ('/_ah/channel/disconnected/', DashboardDisconnectedHandler),
-    ('/notify_token', GetTokenHandler),
-    ('/updates', GetUpdatesHandler),
+    ('/infouser_weekly_all', InfoAllUsersWeeklyHandler),
     ('/set_webhook', SetWebhookHandler),
     ('/webhook', WebhookHandler),
 ], debug=True)

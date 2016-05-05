@@ -1,4 +1,4 @@
-application: opengarden-telegram
+application: dialectbot
 version: 1
 runtime: python27
 api_version: 1
@@ -37,6 +37,10 @@ handlers:
 - url: .*
   script: main.app
 
+- url: /vivaldi
+  static_dir: vivaldi
+  application_readable: true
+
 
 libraries:
 - name: webapp2
@@ -45,5 +49,6 @@ libraries:
   version: latest
 - name: jinja2
   version: latest
-
+- name: ssl
+  version: latest
 
