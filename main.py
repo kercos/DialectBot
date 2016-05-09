@@ -533,10 +533,10 @@ def dealWithFindClosestRecording(p, location):
         dst = geoUtils.distance((location['latitude'], location['longitude']),(rec.location.lat,rec.location.lon))
         tell(p.chat_id, "Luogo della registrazione: " + luogo +
              ". La distanza dal luogo inserito è di: " + format_distance(dst) + ".", markdown=True)
-        tell(p.chat_id, "Se vuoi cercare un'altra registrazione inserisci una nuova località altrimenti premi 'ANNULLA'.")
+        tell(p.chat_id, "Se vuoi cercare un'altra registrazione inserisci una nuova località altrimenti premi 'Indietro'.")
     else:
         tell(p.chat_id, "Non ho trovato nessuna registrazione nelle vicinanze della posizione inserita. Riprova.\n" +
-              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_ANNULLA]])
+              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_INDIETRO]])
 # ================================
 # ================================
 # ================================
