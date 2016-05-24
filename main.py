@@ -73,7 +73,8 @@ ISTRUZIONI_POSIZIONE = "Scrivi il nome del luogo di cui vuoi inserire una regist
 
 
 ISTRUZIONI_POSIZIONE_GUESS = "Prova ad indovinare la posizione geografica della registrazione: " \
-                             "scrivi il nome del luogo o invia la posizione GPS seguendo le seguenti istruzioni:\n" + \
+                             "scrivi il nome del luogo (ad esempio 'Palermo') o invia la posizione GPS " \
+                             "seguendo le seguenti istruzioni:\n" + \
                              "1) premi la graffetta in basso (" + emoij.PAPER_CLIP + ")\n" + \
                              "2) scegli una posizione nella mappa (sii più preciso/a possibile)."
 
@@ -654,7 +655,8 @@ class WebhookHandler(webapp2.RequestHandler):
                 restart(p)
                 # state = -1 or -2
             else:
-                reply("Qualcosa non ha funzionato... prova a contattarmi cliccando su @kercos")
+                reply("Premi su /start se vuoi iniziare. "
+                      "Se hai qualche domanda o suggerimento non esitare di contattarmi cliccando su @kercos")
         else:
             # known user
             person.updateUsername(p, username)
@@ -700,7 +702,7 @@ class WebhookHandler(webapp2.RequestHandler):
                         txt = geoUtils.getLocationTest().address.encode('utf-8')
                         #txt = "Questa è una frase con unicode"
                         reply(txt + " " + str(type(txt)) )
-                    elif text== '/infoCount':
+                    elif text== '/infocount':
                         c = getInfoCount()
                         reply("Number of users: " + str(c))
                     elif text == '/restartUsers':
@@ -833,7 +835,8 @@ class WebhookHandler(webapp2.RequestHandler):
             elif p.state == 22:
                 # CHECK IF AVAILABLE FOR TRANSLATION
                 if text == 'SI':
-                    reply("Inserisci la traduzione in italiano della registrazione", kb=[[BOTTONE_ANNULLA]])
+                    reply("*Scrivi* qua sotto la traduzione in italiano della registrazione",
+                          markdown=True, kb=[[BOTTONE_ANNULLA]])
                     person.setState(p, 23)
                 elif text == 'NO':
                     reply("Grazie per il tuo contributo!")
@@ -842,6 +845,12 @@ class WebhookHandler(webapp2.RequestHandler):
                 else:
                     reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
             elif p.state == 23:
+                if text == '':
+                    reply("Input non valido. *Scrivi* qua sotto la traduzione in italiano della registrazione",
+                          markdown=True, kb=[[BOTTONE_ANNULLA]])
+                    return
+                elif text == BOTTONE_ANNULLA:
+                    text = ''
                 # INSERT TRANSLATION
                 recording.addTranslation(p.last_recording_file_id, text)
                 reply("Grazie per il tuo contributo!")
