@@ -15,6 +15,23 @@ class Person(ndb.Model):
     last_recording_file_id = ndb.StringProperty()
     enabled = ndb.BooleanProperty(default=True)
 
+    def getName(self):
+        return self.name.encode('utf-8')
+
+    def getLastName(self):
+        return self.last_name.encode('utf-8') if self.last_name!='-' else ''
+
+    def getUsername(self):
+        return self.username.encode('utf-8')
+
+    def getNameLastName(self):
+        return self.getName() + ' ' + self.getLastName()
+
+    def getNameLastNameUserName(self):
+        result = self.getNameLastName()
+        if self.username != '-':
+            result += ' @' + self.getUsername()
+        return result
 
 def addPerson(chat_id, name):
     p = Person(

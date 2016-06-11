@@ -1,9 +1,22 @@
-import logging
+
+from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
+
+import urllib, urllib2
+import webapp2
+import logging
 import random
+import json
+import os
+
+import key
+import person
 import time_util
 import sys
 import geoUtils
+import utility
 
 class Recording(ndb.Model):
     chat_id = ndb.IntegerProperty()
@@ -197,3 +210,144 @@ def importVivaldi():
             count = 0
     ndb.put_multi(listOfRecEntities)
 
+
+###########################
+## RECORDINGS MAP
+###########################
+
+# Run from GAE remote API:
+# 	{GAE Path}\remote_api_shell.py -s dialectbot.appspot.com
+# 	import export_as_csv
+
+class DownloadRecordingHandler(webapp2.RequestHandler):
+    def get(self, file_id):
+        if file_id.endswith('.oga'):
+            file_id = file_id[:-4]
+        urlfetch.set_default_fetch_deadline(60)
+        logging.debug("Requested file_id: " + file_id)
+        rec = getRecording(file_id)
+        if rec:
+            resp = urllib2.urlopen(key.BASE_URL + 'getFile', urllib.urlencode(
+                {'file_id': rec.file_id})).read()
+            file_path = json.loads(resp)['result']['file_path']
+            urlFile = key.BASE_URL_FILE + file_path
+            logging.debug("Url file: " + urlFile)
+            voiceFile = urllib.urlopen(urlFile).read()
+
+            self.response.headers['Content-Type'] = 'application/octet-stream'
+            self.response.headers['Content-Disposition'] = 'filename="%s.oga"' % (file_id)
+            self.response.out.write(voiceFile)
+        else:
+            logging.debug("Rec not found")
+            self.response.write('No recording found')
+            self.response.set_status(404)
+
+        #url = self.request.get() #'url'
+        #if file_id:
+        #    self.response.write(file_id)
+        #json.dumps(json.load(urllib2.urlopen(key.BASE_URL + 'setWebhook', urllib.urlencode({'url': url}))))
+
+
+"""
+def downloadRecordings():
+    qry = Recording.query(Recording.file_id !=None)
+    count = 0
+    for rec in qry:
+        resp = urllib2.urlopen(key.BASE_URL + 'getFile', urllib.urlencode(
+            {'file_id': rec.file_id})).read()
+        outputFile = "recordings/" + rec.file_id + ".oga"
+        if not os.path.isfile(outputFile):
+            logging.info('asked for file: ')
+            logging.info(resp)
+            file_path = json.loads(resp)['result']['file_path']
+            logging.info('file path:' + file_path)
+            urlFile = key.BASE_URL_FILE + file_path
+            urllib.urlretrieve(urlFile, outputFile)
+
+
+def createBlobs():
+    voice_url = "https://api.telegram.org/file/bot173222627:AAEzrbHcQ4nstRxVxyk-JeLeMaWmNyUtQrA/voice/file_11.oga"
+    voice = urllib2.urlopen(voice_url).read()
+
+class ViewPhotoHandler(blobstore_handlers.BlobstoreDownloadHandler):
+    def get(self, photo_key):
+        if not blobstore.get(photo_key):
+            self.error(404)
+        else:
+            self.send_blob(photo_key)
+"""
+
+class ServeDynamicAudioGeoJsonFileHandler(webapp2.RequestHandler):
+    def get(self):
+        dict = createAudioGeoJsonDict()
+        self.response.write(json.dumps(dict, indent=4))
+
+def createAudioGeoJsonFile():
+    dict = createAudioGeoJsonDict()
+    with open('audiomap/audiomapdata.geojson', 'w') as fp:
+        json.dump(dict, fp, indent=4)
+
+maxRandomNoise = 0.01 #about 1 Km
+
+def createAudioGeoJsonDict(addRandomCoordNoise=True):
+    featureList = []
+    qry = Recording.query(Recording.file_id != None)
+    for rec in qry:
+        longitude = rec.location.lon
+        latitude = rec.location.lat
+        if addRandomCoordNoise:
+            longitude += utility.getRandomFloat(maxRandomNoise)
+            latitude += utility.getRandomFloat(maxRandomNoise)
+        name_text = person.getPersonByChatId(rec.chat_id).getName()
+        translation_text = rec.translation.encode('utf-8') if rec.translation else "(nessuna traduzione)"
+        audioUrl = "http://dialectbot.appspot.com/recordings/{0}.oga".format(rec.file_id)
+        feature = {
+            "type": "Feature",
+            "properties": {
+                "name": "<p>{0}: {1}</p>".format(name_text, translation_text),
+                "html": "<p><audio width='300' height='32' src='{0}' "
+                        "controls='controls'><br />"
+                        "Your browser does not support the audio element.<br /></audio></p>".format(audioUrl)
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [longitude, latitude]
+            }
+        }
+        featureList.append(feature)
+    return {
+        "type": "FeatureCollection",
+        "features": featureList
+    }
+
+
+
+
+"""
+{
+  "type": "FeatureCollection",
+  "features": [
+  {
+    "type": "Feature",
+    "properties": {
+      "name": "<a href='http://www.freesound.org/people/genghis%20attenborough/sounds/212798/'>Deep basement</a>",
+      "html": "<p><audio width='300' height='32' src='http://www.freesound.org/data/previews/212/212798_205108-lq.mp3' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>"
+    },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-100,34]
+    }
+  },{
+    "type": "Feature",
+    "properties": {
+      "name": "<a href='http://www.freesound.org/people/John%20Sipos/sounds/125696/'>Atlantis docks then lands.</a>",
+      "html": "<p><audio width='300' height='32' src='http://www.freesound.org/data/previews/125/125696_593024-lq.mp3' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>"
+    },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-84,40]
+    }
+  }
+  ]
+}
+"""

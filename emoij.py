@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # from https://github.com/leandrotoledo/python-telegram-bot/blob/master/telegram/emoji.py
 # and http://apps.timwhitlock.info/emoji/tables/unicode
 # http://www.iemoji.com/view/emoji/182/places/regional-indicator-symbol-letters-de

@@ -1,0 +1,649 @@
+{
+    "type": "FeatureCollection", 
+    "features": [
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.56873, 
+                    41.941766
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAAD7gUAAhMVXQqRS0QmceK6owI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.56873, 
+                    41.941766
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAAD7wUAAhMVXQrTXfmnVWJ4IQI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Non hai capito, ieri ho sbrattato pure l'anima</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.13083, 
+                    46.042091
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAQAD-OoVCXgn2q3mh4rnAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Le braci coperte sono quelle che scottano di pi\u00f9.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    14.60247, 
+                    37.7734
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAQADH2RUAbOh4OhkqMVnAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    14.7680961, 
+                    40.68244079999999
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAQADdYlJDC0BILm9G-sGAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    10.775529, 
+                    44.532987
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAQADtstSCwwyR58fiG5LAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Pane prosciutto figa e lambrusco</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.1217486, 
+                    46.0747793
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAwADVYSHCSrBAAG33jFcEgI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.459141, 
+                    46.290778
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADAwADfxsxCEagLKgllVNtAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.499706, 
+                    41.890277
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADBgADB-H1Cg60Aea4qfl9Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>che bell imbusto</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.459141, 
+                    46.290778
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADBgADfxsxCO2vs8hYIE4aAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Il gran freddo macina la neve</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.499706, 
+                    41.890277
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADBwADB-H1Ct3XRL-Pb0lFAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>mi sembri un signorino!</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADCQADB-H1Ck3a8Bc8jHT3Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>non sono uno stupido</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    14.7680961, 
+                    40.68244079999999
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADCQADdYlJDEZCSKJuMLrOAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Temporale</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.603301, 
+                    46.310695
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADCQADfxsxCBFszlDtbZcAAQI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADCgADB-H1CpA9L5HumFqaAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>rinnegare, smentire</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADCwADB-H1Ct9CHB2ahly7Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>era tanto tempo fa.Checco e Nina sono due nomi simbolici.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADDAADB-H1CmOiBqR1MBqlAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>\u00c8 entrato in citt\u00e0 oggi, da Piazza del Popolo. \u00c8 inesperto della citt\u00e0.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    10.988605, 
+                    45.43072
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADDAADfxsxCKIkfMZuc4BmAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADDQADB-H1CmOWpYKk-bxJAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Accendi il fuoco senza sapere dove tira il vento. Provochi senza calcolare le conseguenze.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    16.2718427, 
+                    41.3114986
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADDQIAAkfqnQH87I82PuXIcwI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Salsiccia mangia, e Salsiccia mette (infila)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADDgADB-H1Cr_GYUqE0AG5Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>che vento freddo!</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADEAADB-H1CjbUOXd1omDSAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>come passa in fretta il tempo!</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADEQADB-H1CjRCWUNf9Aa9Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Ha perso tempo, non ha combinato niente.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADEgADB-H1CrkTNTChlSTIAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>non ho \"cum quibus\", non ho soldi</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADEwADB-H1CmbRpk_gAhfNAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>il mio amico pi\u00f9 fedele \u00e8 il coltello che ho in tasca. Cio\u00e8: so difendermi da solo</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADFAADB-H1CrkBKUI5kJ8bAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>pu\u00f2 chiamare riso il farro e farro il riso. Pu\u00f2 fare quello tutto che vuole.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADFQADB-H1CiQLsyQWqeqqAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>quando hanno aperto il sacco degli stupidi non stavo in cima, tra i primi; non sono uno stupido</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADFwADB-H1CrLuZmd5DE1_Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>\u00c8 come l'incenso per i morti; \u00e8 una cosa inutile.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.494381, 
+                    41.890923
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADGAADB-H1ClItk7kE-pHHAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Mi sono saltati i nervi. Sono andato su tutte le furie.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    16.0772143, 
+                    38.3537268
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADJAADDldzBzEKgbLKi2UtAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Se vuoi venire con noi, vieni pure</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    13.883734, 
+                    41.901292
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADLwADMezMB69lrc0M9hKrAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Le case sono belle</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.398054, 
+                    44.197396
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADMAADMezMB1w_7S6xak_zAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>La casa \u00e8 bella</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.8753372, 
+                    46.4973541
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADMgADMezMB4ZffPF3QF-ZAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Dammi un altro pezzo</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.460826, 
+                    46.291431
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADOQADMezMB2AzKLmYsYjcAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Andiamo in soffitta a cercare qualcosa tra le cianfrusaglie</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.510942, 
+                    46.289654
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADOgADMezMB15nfJ9sSgVyAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Si sa che ad andare all'indietro si va all'indietro, ma se si va troppo all'indietro ci si ribalta sui sassi appuntiti</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    18.100028, 
+                    40.076434
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADOwADMezMB5y8AAGILUpdGAI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Quando arriva il fico le angurie non sono pi\u00f9 buone</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    18.29416, 
+                    40.170932
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADPAADMezMB-sgG74-dzKxAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Se esco da questa trappola non cago pi\u00f9 di notte</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    18.29416, 
+                    40.170932
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADPQADMezMB0HIY-VxxT2QAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>La coda \u00e8 difficile da scorticare</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    18.294853, 
+                    40.172604
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADPgADMezMB4MqZ1I7GprrAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Allo squagliare della neve compaiono gli stronzi</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    12.443193, 
+                    37.803155
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADQwMAAhLBLAOpsZoz8nVG8AI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Pioggia davanti e vento da dietro, fuoco nei calcagni e sapone morbido per scivolare meglio.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    10.028191, 
+                    45.81043
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADRwMAAoF1egEiBR0OGD-kgAI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>(nessuna traduzione)</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.8734455, 
+                    45.4077172
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADVwADMezMB2CLf31gNnz6Ag.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Chi \u00e8 sfortunato, gli piove sul culo anche da seduto.</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    11.8734455, 
+                    45.4077172
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADYQADMezMB5tJ3HKYSSwlAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Lui ha legato i galli</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    10.4016888, 
+                    43.7228386
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADYwADMezMB8SOgGTnlpZRAg.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Sei completamente ubriaco</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    9.591297, 
+                    45.65081
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADZQMAAoF1egGjQORenVswOAI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Sei proprio una bella ragazza</p>"
+            }
+        }, 
+        {
+            "geometry": {
+                "type": "Point", 
+                "coordinates": [
+                    16.2838207, 
+                    41.3196635
+                ]
+            }, 
+            "type": "Feature", 
+            "properties": {
+                "html": "<p><audio width='300' height='32' src='http://dialectbot.appspot.com/recordings/AwADBAADvgEAAkfqnQE34g4UjfnCVAI.oga' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>", 
+                "name": "<p>Se ce ne dobbiamo andare, andiamo via, se non ce ne dobbiamo andare, non  andiamocene.</p>"
+            }
+        }
+    ]
+}

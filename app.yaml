@@ -34,12 +34,16 @@ handlers:
 #  name: ChannelDisconnected
 #  script: main.app
 
-- url: .*
-  script: main.app
-
 - url: /vivaldi
   static_dir: vivaldi
   application_readable: true
+
+- url: /audiomap
+  static_dir: audiomap
+  application_readable: true
+
+- url: .*
+  script: main.app
 
 
 libraries:
