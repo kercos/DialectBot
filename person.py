@@ -3,6 +3,7 @@
 import logging
 from google.appengine.ext import ndb
 import recording
+import key
 
 class Person(ndb.Model):
     chat_id = ndb.IntegerProperty()
@@ -15,6 +16,12 @@ class Person(ndb.Model):
     last_recording_file_id = ndb.StringProperty()
     enabled = ndb.BooleanProperty(default=True)
 
+    def setState(self, newstate, put=True):
+        self.last_state = self.state
+        self.state = newstate
+        if put:
+            self.put()
+
     def getName(self):
         return self.name.encode('utf-8')
 
@@ -25,13 +32,22 @@ class Person(ndb.Model):
         return self.username.encode('utf-8')
 
     def getNameLastName(self):
-        return self.getName() + ' ' + self.getLastName()
+        result = self.getName() + ' ' + self.getLastName()
+        return result.strip()
 
     def getNameLastNameUserName(self):
         result = self.getNameLastName()
         if self.username != '-':
             result += ' @' + self.getUsername()
         return result
+
+    def setLast_recording_file_id(self, file_id, put=True):
+        self.last_recording_file_id = file_id
+        if put:
+            self.put()
+
+    def isAdmin(self):
+        return self.chat_id in key.MASTER_CHAT_ID
 
 def addPerson(chat_id, name):
     p = Person(
@@ -51,8 +67,8 @@ def setState(p, state):
     p.state = state
     p.put()
 
-def setLocation(p, loc):
-    p.location =  ndb.GeoPt(loc['latitude'], loc['longitude'])
+def setLocation(p, latitude, longitude):
+    p.location =  ndb.GeoPt(latitude, longitude)
     p.put()
 
 def getPersonByChatId(chat_id):
@@ -70,10 +86,7 @@ def setLastRecording(p, recording):
         p.last_recording_file_id =  recording.url
     p.put()
 
-def getLastRecordingLocation(p):
+def getLastRecordingLatLonLocation(p):
     rec = recording.getRecordingCheckIfUrl(p.last_recording_file_id)
-    lat = rec.location.lat
-    lon = rec.location.lon
-    loc = {'latitude': lat, 'longitude': lon}
-    return loc
+    return rec.location.lat, rec.location.lon
 

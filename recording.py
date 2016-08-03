@@ -15,8 +15,12 @@ import key
 import person
 import time_util
 import sys
-import geoUtils
 import utility
+
+REC_ARROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
+REC_ARROVED_STATE_TRUE = 'TRUE' #submitted
+REC_ARROVED_STATE_FALSE = 'FALSE' #submitted and closed
+
 
 class Recording(ndb.Model):
     chat_id = ndb.IntegerProperty()
@@ -26,11 +30,16 @@ class Recording(ndb.Model):
     url = ndb.StringProperty()
     random_id = ndb.FloatProperty()
     translation = ndb.StringProperty()
+    approved = ndb.StringProperty(default=REC_ARROVED_STATE_IN_PROGRESS)
     location_approx_det_0 = ndb.StringProperty()  # 5 degree ~ 550Km
     location_approx_det_1 = ndb.StringProperty()  # 2 degree ~ 220Km
     location_approx_det_2 = ndb.StringProperty()  # 1 degree ~ 110Km
     location_approx_det_3 = ndb.StringProperty()  # 0.5 degrees ~ 55Km
     location_approx_det_4 = ndb.StringProperty()  # 0.1 degrees ~ 11Km
+
+    def approve(self, value):
+        self.approved = value
+        self.put()
 
 def deleteLocationApprox():
     qry = Recording.query()
@@ -85,6 +94,7 @@ def getRandomRecording():
     return random_entry
 
 def getClosestRecording(lat, lon, clusterSizeKm=50):
+    import geoUtils
     approxLocs = getApproxLocations(lat,lon)
     level = 4
     qry = Recording.query(Recording.location_approx_det_4==approxLocs[4])
@@ -211,6 +221,23 @@ def importVivaldi():
     ndb.put_multi(listOfRecEntities)
 
 
+def setAllRecApproved():
+    listOfRecEntities = []
+    count = 0
+    for rec in Recording.query():
+        rec.approved = REC_ARROVED_STATE_TRUE
+        listOfRecEntities.append(rec)
+        count += 1
+        if count % 10 == 0:
+            print count
+    ndb.put_multi(listOfRecEntities)
+
+def getInfoApproved():
+    totalCount = Recording.query().count()
+    totalApproved = Recording.query(Recording.approved==REC_ARROVED_STATE_TRUE).count()
+    print "Total count: " + str(totalCount)
+    print "Approved: " + str(totalApproved)
+
 ###########################
 ## RECORDINGS MAP
 ###########################
@@ -248,106 +275,69 @@ class DownloadRecordingHandler(webapp2.RequestHandler):
         #json.dumps(json.load(urllib2.urlopen(key.BASE_URL + 'setWebhook', urllib.urlencode({'url': url}))))
 
 
-"""
-def downloadRecordings():
-    qry = Recording.query(Recording.file_id !=None)
-    count = 0
-    for rec in qry:
-        resp = urllib2.urlopen(key.BASE_URL + 'getFile', urllib.urlencode(
-            {'file_id': rec.file_id})).read()
-        outputFile = "recordings/" + rec.file_id + ".oga"
-        if not os.path.isfile(outputFile):
-            logging.info('asked for file: ')
-            logging.info(resp)
-            file_path = json.loads(resp)['result']['file_path']
-            logging.info('file path:' + file_path)
-            urlFile = key.BASE_URL_FILE + file_path
-            urllib.urlretrieve(urlFile, outputFile)
-
-
-def createBlobs():
-    voice_url = "https://api.telegram.org/file/bot173222627:AAEzrbHcQ4nstRxVxyk-JeLeMaWmNyUtQrA/voice/file_11.oga"
-    voice = urllib2.urlopen(voice_url).read()
-
-class ViewPhotoHandler(blobstore_handlers.BlobstoreDownloadHandler):
-    def get(self, photo_key):
-        if not blobstore.get(photo_key):
-            self.error(404)
-        else:
-            self.send_blob(photo_key)
-"""
-
 class ServeDynamicAudioGeoJsonFileHandler(webapp2.RequestHandler):
     def get(self):
-        dict = createAudioGeoJsonDict()
-        self.response.write(json.dumps(dict, indent=4))
+        geoJsonStructure = getAudioGeoJsonStructure()
+        self.response.write(json.dumps(geoJsonStructure, indent=4))
 
-def createAudioGeoJsonFile():
-    dict = createAudioGeoJsonDict()
-    with open('audiomap/audiomapdata.geojson', 'w') as fp:
-        json.dump(dict, fp, indent=4)
+ADD_RANDOM_NOISE_TO_COORDINATES = True
+MAX_COORDINATES_RANDOM_NOISE = 0.01 #about 1 Km
 
-maxRandomNoise = 0.01 #about 1 Km
-
-def createAudioGeoJsonDict(addRandomCoordNoise=True):
-    featureList = []
-    qry = Recording.query(Recording.file_id != None)
-    for rec in qry:
-        longitude = rec.location.lon
-        latitude = rec.location.lat
-        if addRandomCoordNoise:
-            longitude += utility.getRandomFloat(maxRandomNoise)
-            latitude += utility.getRandomFloat(maxRandomNoise)
-        name_text = person.getPersonByChatId(rec.chat_id).getName()
-        translation_text = rec.translation.encode('utf-8') if rec.translation else "(nessuna traduzione)"
-        audioUrl = "http://dialectbot.appspot.com/recordings/{0}.oga".format(rec.file_id)
-        feature = {
-            "type": "Feature",
-            "properties": {
-                "name": "<p>{0}: {1}</p>".format(name_text, translation_text),
-                "html": "<p><audio width='300' height='32' src='{0}' "
-                        "controls='controls'><br />"
-                        "Your browser does not support the audio element.<br /></audio></p>".format(audioUrl)
-            },
-            "geometry": {
-                "type": "Point",
-                "coordinates": [longitude, latitude]
-            }
+def createGeoJsonElement(rec, addRandomCoordNoise=True):
+    longitude = rec.location.lon
+    latitude = rec.location.lat
+    if addRandomCoordNoise:
+        longitude += utility.getRandomFloat(MAX_COORDINATES_RANDOM_NOISE)
+        latitude += utility.getRandomFloat(MAX_COORDINATES_RANDOM_NOISE)
+    name_text = person.getPersonByChatId(rec.chat_id).getName()
+    translation_text = rec.translation.encode('utf-8') if rec.translation else "(nessuna traduzione)"
+    audioUrl = "http://dialectbot.appspot.com/recordings/{0}.oga".format(rec.file_id)
+    element = {
+        "type": "Feature",
+        "properties": {
+            "person": name_text,
+            "translation": translation_text,
+            # "place"
+            "date": rec.date_time.strftime("%d-%m-%Y"),
+            "audio": "<p><audio width='300' height='32' src='{0}' "
+                     "controls='controls' preload='none' type='audio/ogg; codecs=vorbis'><br />"
+                     "Your browser does not support the audio element.<br /></audio></p>".format(audioUrl)
+        },
+        "geometry": {
+            "type": "Point",
+            "coordinates": [longitude, latitude]
         }
-        featureList.append(feature)
+    }
+    return element
+
+def createAudioGeoJsonStructure():
+    structure = []
+    qry = Recording.query(Recording.file_id != None, Recording.approved == REC_ARROVED_STATE_TRUE)
+    for rec in qry:
+        element = createGeoJsonElement(rec, addRandomCoordNoise=ADD_RANDOM_NOISE_TO_COORDINATES)
+        structure.append(element)
+    return structure
+
+RECORDING_MANAGER_ID = "RECORDING_MANAGER"
+
+class RecordingManager(ndb.Model):
+    geoJsonStructure = ndb.PickleProperty()
+
+def initializeGeoJsonStructure():
+    recManagerEntry = RecordingManager.get_or_insert(RECORDING_MANAGER_ID)
+    recManagerEntry.geoJsonStructure = createAudioGeoJsonStructure()
+    recManagerEntry.put()
+
+def appendRecordingInGeoJsonStructure(rec):
+    recManagerEntry = RecordingManager.get_or_insert(RECORDING_MANAGER_ID)
+    element = createGeoJsonElement(rec, ADD_RANDOM_NOISE_TO_COORDINATES)
+    recManagerEntry.geoJsonStructure.append(element)
+    recManagerEntry.put()
+
+def getAudioGeoJsonStructure():
+    recManagerEntry = RecordingManager.get_by_id(RECORDING_MANAGER_ID)
+    structure = recManagerEntry.geoJsonStructure
     return {
         "type": "FeatureCollection",
-        "features": featureList
+        "features": structure
     }
-
-
-
-
-"""
-{
-  "type": "FeatureCollection",
-  "features": [
-  {
-    "type": "Feature",
-    "properties": {
-      "name": "<a href='http://www.freesound.org/people/genghis%20attenborough/sounds/212798/'>Deep basement</a>",
-      "html": "<p><audio width='300' height='32' src='http://www.freesound.org/data/previews/212/212798_205108-lq.mp3' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>"
-    },
-    "geometry": {
-      "type": "Point",
-      "coordinates": [-100,34]
-    }
-  },{
-    "type": "Feature",
-    "properties": {
-      "name": "<a href='http://www.freesound.org/people/John%20Sipos/sounds/125696/'>Atlantis docks then lands.</a>",
-      "html": "<p><audio width='300' height='32' src='http://www.freesound.org/data/previews/125/125696_593024-lq.mp3' controls='controls'><br />Your browser does not support the audio element.<br /></audio></p>"
-    },
-    "geometry": {
-      "type": "Point",
-      "coordinates": [-84,40]
-    }
-  }
-  ]
-}
-"""

@@ -49,6 +49,11 @@ import utility
 from jinja2 import Environment, FileSystemLoader
 
 # ================================
+WORK_IN_PROGRESS = False
+# ================================
+
+
+# ================================
 # ================================
 # ================================
 
@@ -57,55 +62,64 @@ DASHBOARD_DIR_ENV = Environment(loader=FileSystemLoader('dashboard'), autoescape
 ISTRUZIONI =  \
 """
 Sono @DialectBot, uno *strumento gratuito e aperto alla comunità* per condividere registrazioni nei diversi dialetti. \
-Hai la possibilità di 👂 ascoltare gli audio che sono già stati inseriti o 🎙 registrarne di nuovi.
+Hai la possibilità di 👂 ascoltare gli audio che sono già stati inseriti o 🗣 registrarne di nuovi.
 
 Se pensi di non parlare nessun dialetto specifico ti consigliamo \
 di utilizzare questo strumento per registrare parenti, amici o persone \
 che incontri quando ti capita di viaggiare tra paesini sperduti in Italia.
 
-Per maggiori informazioni contatta @kercos
+Se vai sul sito http://dialectbot.appspot.com potrai *visualizzare* e *ascoltare* tutte le \
+registrazioni sulla *mappa* 🗺 !
 
 Aiutaci a far conoscere questo bot invitando altri amici e votandolo su \
 [telegramitalia](telegramitalia.it/dialectbot) e su [storebot](telegram.me/storebot?start=dialectbot)
 
-Buon 👂 ascolto e buona 🎙 registrazione a tutti!
+Per maggiori informazioni contatta @kercos
+
+Buon 👂 ascolto e buona 🗣 registrazione a tutti!
 
 """
 
-PLACE_AND_MIC_INSTRUCTIONS = \
+PLACE_INSTRUCTIONS = \
 """
 Il luogo della registrazione è impostato su: {0} \
 (se il luogo non è corretto premi su 🔀🌍 *CAMBIA LUOGO*).
+"""
 
-Quando sei pronta/o *pronuncia* 🗣 una frase nel dialetto del luogo inserito, ad esempio un proverbio o un modo di dire, \
-*tenendo premuto il tasto del microfono* 🎙 (in basso).
+MIC_INSTRUCTIONS = \
+"""
+⭐ COME REGISTRARE ⭐
+Quando sei pronta/o *tieni premuto il tasto del microfono* 🎙 (in basso) e \
+*pronuncia* 🗣 una frase nel dialetto del luogo inserito, ad esempio un proverbio o un modo di dire.
 """
 
 ISTRUZIONI_POSIZIONE = \
 """
-Hai due modi per inserire il luogo del dialetto che vuoi registrare:
-1) 🖊 *Scrivi* qua sotto il *nome del luogo* di cui vuoi inserire una registrazione (ad esempio Roma), oppure
-2) 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
-      📎 premi la graffetta in basso
-      📍 invia una posizione dalla mappa (sii più preciso/a possibile).
+Hai tre modi per inserire il luogo del dialetto che vuoi registrare:
+📍 *Premi* su INVIA POSIZIONE se vuoi inviare la tua posizione corrente, oppure...
+🖊 *Scrivi* qua sotto il *nome del luogo* di cui vuoi inserire una registrazione (ad esempio Roma), oppure...
+🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
+      🔹 premi la graffetta (📎 ) in basso e premi su "Posizione"
+      🔹 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
+
 """
 
 ISTRUZIONI_POSIZIONE_GUESS = \
 """
 Hai due modi per indovinare il luogo della registrazione:
-1) 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure
-2) 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
-      📎 premi la graffetta in basso
-      📍 invia una posizione dalla mappa (sii più preciso/a possibile).
+🔶 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
+🔷 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
+      📎 premi la graffetta in basso e premi su "Posizione"
+      📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
 """
 
 ISTRUZIONI_POSIZIONE_SEARCH = \
 """
 Hai due modi per cercare le registrazioni vicino ad un determinato luogo:
-1) 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure
-2) 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
-      📎 premi la graffetta in basso
-      📍 invia una posizione dalla mappa (sii più preciso/a possibile).
+🔶 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
+🔷 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
+      📎 premi la graffetta in basso e premi su "Posizione"
+      📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
 """
 
 MESSAGE_FOR_FRIENDS = \
@@ -118,6 +132,7 @@ Provalo premendo su @dialectbot!
 STATES = {
     -2: 'Setting posizione',
     -1: 'Initial with ASCOLTA, REGISTRA e HELP',
+     0:   'Started',
     20: 'Registra',
     21: 'Confirm recording',
     22: 'Ask for transcription',
@@ -125,7 +140,8 @@ STATES = {
     30: 'Ascolta',
     31: 'Indovina Luogo',
     32: 'Ricerca Luogo',
-    0:   'Started',
+    9:  'Admin',
+    91: 'Amin -> approva registrazioni'
 }
 
 MIC = u'\U0001F399'.encode('utf-8')
@@ -142,13 +158,15 @@ FROWNING_FACE = u'\U0001F641'.encode('utf-8')
 HUNDRED = u'\U0001F4AF'.encode('utf-8')
 CLAPPING_HANDS = b'\xF0\x9F\x91\x8F'
 SMILY = u'\U0001F60A'.encode('utf-8')
+UNDER_CONSTRUCTION = u'\U0001F6A7'.encode('utf-8')
 
 BOTTONE_ANNULLA = CANCEL + " Annulla"
 BOTTONE_INDIETRO = emoij.LEFTWARDS_BLACK_ARROW + ' ' + "Indietro"
-BOTTONE_REGISTRA = MIC + " REGISTRA"
+BOTTONE_REGISTRA = SPEAKING_HEAD + " REGISTRA"
 BOTTONE_ASCOLTA = EAR + " ASCOLTA"
-BOTTONE_INVITA = SPEAKING_HEAD + " INVITA UN AMICO"
+BOTTONE_INVITA = "📩 INVITA UN AMICO"
 BOTTONE_INFO = INFO + " INFO"
+BOTTONE_ADMIN = "🛠 ADMIN"
 BOTTONE_INDOVINA_LUOGO = WORLD + POINT_LEFT + " INDOVINA LUOGO"
 BOTTONE_CERCA_LUOGO = SEARCH + " CERCA LUOGO"
 BOTTONE_RECENTI = CALENDAR + " REGISTRAZIONI RECENTI"
@@ -160,8 +178,8 @@ BOTTONE_CONTACT = {
     'request_contact': True,
 }
 
-BOTTONE_LOCATION = {
-    'text': "Invia la tua location",
+BOTTONE_INVIA_LOCATION = {
+    'text': "📍 INVIA POSIZIONE",
     'request_location': True,
 }
 
@@ -187,8 +205,13 @@ BOTTONE_CALLBACK3 = {
 
 def restart(p, txt=None):
     reply_txt = (txt + '\n\n') if txt!=None else ''
-    reply_txt += "Premi su 👂 *ASCOLTA* o 🎙 *REGISTRA* se vuoi ascoltare o registrare una frase in un dialetto."
-    tell(p.chat_id, reply_txt, kb=[[BOTTONE_ASCOLTA,BOTTONE_REGISTRA], [BOTTONE_INVITA], [BOTTONE_INFO]])
+    reply_txt += "Premi su *{0}* o *{1}* se vuoi ascoltare o registrare una frase in un dialetto.".format(
+        BOTTONE_ASCOLTA, BOTTONE_REGISTRA
+    )
+    third_row_buttons = [BOTTONE_INFO]
+    if p.isAdmin():
+        third_row_buttons.append(BOTTONE_ADMIN)
+    tell(p.chat_id, reply_txt, kb=[[BOTTONE_ASCOLTA,BOTTONE_REGISTRA], [BOTTONE_INVITA], third_row_buttons])
     person.setState(p, -1)
 
 def restartAllUsers(msg):
@@ -237,21 +260,29 @@ def get_time_string(date):
     newdate = date + timedelta(hours=1)
     return str(newdate).split(" ")[1].split(".")[0]
 
-def broadcast(msg, restart_user=False):
+def broadcast(msg, restart_user=False, sendDebug=True):
     qry = Person.query().order(-Person.last_mod)
+    disabled = 0
     count = 0
     for p in qry:
-        if (p.enabled):
+        if p.enabled:
             count += 1
+            tell(p.chat_id, msg)
+            sleep(0.100)  # no more than 10 messages per second
             if restart_user:
                 restart(p)
-            tell(p.chat_id, msg)
-            sleep(0.100) # no more than 10 messages per second
-    logging.debug('broadcasted to people ' + str(count))
+        else:
+            disabled += 1
+    if sendDebug:
+        enabledCount = qry.count() - disabled
+        msg_debug = 'Messaggio inviato a ' + str(qry.count()) + ' persone.\n' + \
+                    'Messaggio ricevuto da ' + str(enabledCount) + ' persone.\n' + \
+                    'Persone disabilitate: ' + str(disabled)
+        tell(key.FEDE_CHAT_ID, msg_debug)
 
 def getRecentRecordings(p):
     recordings = ''
-    qry = Recording.query().order(-Recording.date_time).fetch(8) #Recording.chat_id > 0
+    qry = Recording.query(Recording.approved == recording.REC_ARROVED_STATE_TRUE).order(-Recording.date_time).fetch(8)
     for r in qry:
         name = person.getPersonByChatId(r.chat_id).name.encode('utf-8')
         recordings += '/rec_' + str(r.key.id()) + ' - ' + name + ' - ' + str(r.date_time.date()) + '\n'
@@ -275,7 +306,7 @@ def getLastContibutors(daysAgo):
     dateThreshold = time_util.get_time_days_ago(daysAgo)
     names = set()
     count = 0
-    qry = Recording.query(Recording.date_time > dateThreshold)
+    qry = Recording.query(Recording.date_time > dateThreshold, Recording.approved==recording.REC_ARROVED_STATE_TRUE)
     for r in qry:
         if r.chat_id<=0:
             continue
@@ -287,7 +318,9 @@ def getLastContibutors(daysAgo):
 
 def sendNewRecordingNotice(p):
     rec = recording.getRecording(p.last_recording_file_id)
-    tell(key.FEDE_CHAT_ID, "New recording: /rec_" + str(rec.key.id()) + " from user: @" + p.getNameLastNameUserName())
+    logging.debug("Sendin new recording notice /rec_" + str(rec.key.id()))
+    tell(key.FEDE_CHAT_ID, "New recording: /rec_" + str(rec.key.id()) + " from user {0}: {1}".format(
+        str(p.chat_id), p.getNameLastNameUserName()), markdown=False)
 
 def getInfoCount():
     c = Person.query().count()
@@ -307,10 +340,20 @@ def tell_fede(msg):
         tell(key.FEDE_CHAT_ID, "prova " + str(i))
         sleep(0.1)
 
-def tell(chat_id, msg, kb=None, markdown=True, inlineKeyboardMarkup=False):
+def tell_person(chat_id, msg, markdown=False):
+    tell(chat_id, msg, markdown=markdown)
+    p = ndb.Key(Person, str(chat_id)).get()
+    if p and p.enabled:
+        return True
+    return False
 
-    replyMarkup = {}
-    replyMarkup['resize_keyboard'] = True
+
+def tell(chat_id, msg, kb=None, markdown=True, inlineKeyboardMarkup=False, one_time_keyboard=False):
+    replyMarkup = {
+        'resize_keyboard': True,
+        'one_time_keyboard': one_time_keyboard
+    }
+
     if kb:
         if inlineKeyboardMarkup:
             replyMarkup['inline_keyboard'] = kb
@@ -358,12 +401,12 @@ def sendVoiceFile(chat_id):
             p.put()
             logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
 
-def sendLocation(chat_id, loc):
+def sendLocation(chat_id, latitude, longitude):
     try:
         resp = urllib2.urlopen(key.BASE_URL + 'sendLocation', urllib.urlencode({
             'chat_id': chat_id,
-            'latitude': loc['latitude'],
-            'longitude': loc['longitude'],
+            'latitude': latitude,
+            'longitude': longitude,
             #'reply_markup': json.dumps({
                 #'one_time_keyboard': True,
                 #'resize_keyboard': True,
@@ -383,7 +426,7 @@ def sendLocation(chat_id, loc):
 def sendTranslation(chat_id, rec):
     translation = rec.translation
     if translation:
-        tell(chat_id, "Traduzione: " + translation.encode('utf-8'))
+        tell(chat_id, "Spiegazione: " + translation.encode('utf-8'))
     else:
         tell(chat_id, "Nessuna traduzione.")
 
@@ -423,7 +466,7 @@ def sendAudio(chat_id, file_id):
         else:
             logging.info('Error occured: ' + str(err))
 
-def sendVoiceAndLocation(p, rec_command):
+def sendVoiceLocationTranslationFromCommand(p, rec_command, userInfo = False):
     digits = rec_command[5:]
     if utility.hasOnlyDigits(digits):
         rec_id = long(digits)
@@ -431,14 +474,19 @@ def sendVoiceAndLocation(p, rec_command):
         if rec is None:
             tell(p.chat_id, 'No recording found!')
         else:
-            tell(p.chat_id, 'Voice:')
-            sendVoiceFileId(p.chat_id, rec.file_id)
-            tell(p.chat_id, 'Location:')
-            loc = {'latitude': rec.location.lat, 'longitude': rec.location.lon}
-            sendLocation(p.chat_id, loc)
-            sendTranslation(p.chat_id, rec)
+            sendVoiceLocationTranslation(p, rec, userInfo=userInfo)
     else:
         tell(p.chat_id, FROWNING_FACE + "Input non valido.")
+
+def sendVoiceLocationTranslation(p, rec, userInfo = False):
+    if userInfo:
+        user = person.getPersonByChatId(rec.chat_id)
+        tell(p.chat_id, 'User: {0} {1}'.format(str(user.chat_id), user.getNameLastNameUserName()))
+    tell(p.chat_id, 'Voice:')
+    sendVoiceFileId(p.chat_id, rec.file_id)
+    tell(p.chat_id, 'Location:')
+    sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
+    sendTranslation(p.chat_id, rec)
 
 def format_distance(dst):
     if (dst>=10):
@@ -516,10 +564,8 @@ def dealWithRandomRecording(p):
 def dealWithGuessedLocation(p,guessed_loc):
     lat_guessed = guessed_loc['latitude']
     lon_guessed = guessed_loc['longitude']
-    gold_loc = person.getLastRecordingLocation(p)
-    lat_gold = gold_loc['latitude']
-    lon_gold = gold_loc['longitude']
-    logging.debug('Gold loc: ' + str(gold_loc))
+    lat_gold, lon_gold  = person.getLastRecordingLatLonLocation(p)
+    logging.debug('Gold loc: ' + str((lat_gold, lon_gold)))
     logging.debug('Guessed loc: ' + str(guessed_loc))
     luogo = '*' + geoUtils.getLocationFromPosition(lat_gold, lon_gold).address.encode('utf-8') + '*'
     #dist = geoUtils.HaversineDistance(lat_guessed, lon_guessed, lat_gold, lon_gold)
@@ -527,12 +573,13 @@ def dealWithGuessedLocation(p,guessed_loc):
     distFormatted = format_and_comment_distance(dist)
     tell(p.chat_id, "Distanza: " + distFormatted + "\n" + "Questo il luogo preciso: " + luogo)
     rec = recording.getRecordingCheckIfUrl(p.last_recording_file_id)
-    sendLocation(p.chat_id, gold_loc)
+    sendLocation(p.chat_id, lat_gold, lon_gold)
     sendTranslation(p.chat_id, rec)
 
 def dealWithPlaceAndMicInstructions(p):
     luogo = '*' + geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8') + '*'
-    tell(p.chat_id, PLACE_AND_MIC_INSTRUCTIONS.format(luogo), kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
+    instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
+    tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
     person.setState(p, 20)
 
 def dealWithFindClosestRecording(p, location):
@@ -540,8 +587,7 @@ def dealWithFindClosestRecording(p, location):
     if rec:
         tell(p.chat_id, "Trovata la seguente registrazione: ")
         sendRecording(p.chat_id, rec)
-        loc = {'latitude': rec.location.lat, 'longitude': rec.location.lon}
-        sendLocation(p.chat_id, loc)
+        sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
         sendTranslation(p.chat_id, rec)
         luogo = '*' + geoUtils.getLocationFromPosition(rec.location.lat, rec.location.lon).address.encode('utf-8') + '*'
         dst = geoUtils.distance((location['latitude'], location['longitude']),(rec.location.lat,rec.location.lon))
@@ -589,6 +635,10 @@ class SetWebhookHandler(webapp2.RequestHandler):
             self.response.write(
                 json.dumps(json.load(urllib2.urlopen(key.BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))))
 
+class RedirectMappa(webapp2.RequestHandler):
+    def get(self):
+        self.redirect("http://dialectbot.appspot.com/audiomap/mappa.html")
+
 class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
@@ -608,11 +658,141 @@ def getWeeklyMessage():
                    " registrazioni! " \
                    "Un grande ringraziamento a " + contr_namesString + '! ' + CLAPPING_HANDS * contr_count
     else:
-        msg += "Purtroppo questa settimana non abbiamo avuto nessun nuovo contributo " + FROWNING_FACE
+        msg += "Purtroppo questa settimana non abbiamo ricevuto nessuna nuova registrazione " + FROWNING_FACE
 
     msg += "\n\nAiutaci a crescere: aggiungi nuove registrazioni del tuo dialetto tramite il bot " \
            "e invita altre persone ad unirsi! " + SMILY
     return msg
+
+# ================================
+# ================================
+# ================================
+
+# ================================
+# SWITCH TO STATE
+# ================================
+def redirectToState(p, new_state, **kwargs):
+    if p.state != new_state:
+        logging.debug("In redirectToState. current_state:{0}, new_state: {1}".format(str(p.state),str(new_state)))
+        p.setState(new_state)
+    repeatState(p, **kwargs)
+
+# ================================
+# REPEAT STATE
+# ================================
+def repeatState(p, **kwargs):
+    methodName = "goToState" + str(p.state)
+    method = possibles.get(methodName)
+    if not method:
+        tell(p.chat_id, "Si è verificato un problema (" + methodName +
+              "). Segnalamelo mandando una messaggio a @kercos" + '\n' +
+              "Ora verrai reindirizzato/a nella schermata iniziale.")
+        restart(p)
+    else:
+        method(p, **kwargs)
+
+# ================================
+# state 9: Admin
+# ================================
+
+BOTTONE_APPROVA_REGISTRAZIONI = '✅❌ APPROVA REGISTRAZIONI'
+
+def goToState9(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        reply_txt = 'Maschera principale amministratore'
+        kb = [
+            [BOTTONE_APPROVA_REGISTRAZIONI],
+            [BOTTONE_INDIETRO]
+        ]
+
+        tell(p.chat_id, reply_txt, kb)
+    else:
+        if input == '':
+            tell(p.chat_id, "Input non valido.")
+        elif input == BOTTONE_APPROVA_REGISTRAZIONI:
+            redirectToState(p, 91)
+        elif input == BOTTONE_INDIETRO:
+            restart(p)
+        else:
+            tell(p.chat_id, FROWNING_FACE + " Scusa, non capisco quello che hai detto.")
+
+# ================================
+# state 91: Admin - Approvazione Registrazioni
+# ================================
+
+BOTTONE_APPROVA = "👍 APPROVA"
+BOTTONE_DISAPPROVA = "👎 DISAPPROVA"
+
+USER_MSG = \
+"""
+La tua registrazione{0}è stata approvata.
+Per riascoltarla premi su: /rec_{1}
+Per maggiori infomazioni contattatta @kercos
+"""
+
+def goToState91(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        rec = Recording.query(Recording.approved == recording.REC_ARROVED_STATE_IN_PROGRESS).get()
+        if rec:
+            p.setLast_recording_file_id(rec.file_id)
+            sendVoiceLocationTranslation(p, rec, userInfo=True)
+            kb = [
+                [BOTTONE_APPROVA, BOTTONE_DISAPPROVA],
+                [BOTTONE_INDIETRO]
+            ]
+            tell(p.chat_id, "Approvi questa registrazione?", kb)
+        else:
+            kb = [[BOTTONE_INDIETRO]]
+            tell(p.chat_id, "Non c'è nessuna registrazione da approvare", kb)
+    else:
+        if input == '':
+            tell(p.chat_id, "Input non valido.")
+        elif input == BOTTONE_APPROVA:
+            rec = recording.getRecording(p.last_recording_file_id)
+            tell(rec.chat_id, USER_MSG.format('', str(rec.key.id())), markdown=False)
+            tell(p.chat_id, "Registrazione approvata!")
+            rec.approve(recording.REC_ARROVED_STATE_TRUE)
+            recording.appendRecordingInGeoJsonStructure(rec)
+            sleep(2)
+            repeatState(p)
+        elif input == BOTTONE_DISAPPROVA:
+            rec = recording.getRecording(p.last_recording_file_id)
+            tell(rec.chat_id, USER_MSG.format(' NON ', str(rec.key.id())), markdown=False)
+            tell(p.chat_id, "Registrazione NON approvata! "
+                            "Se vuoi mandare maggiori info scrivi /sendText {0} text".format(str(rec.chat_id)))
+            rec.approve(recording.REC_ARROVED_STATE_FALSE)
+            sleep(2)
+            repeatState(p)
+        elif input == BOTTONE_INDIETRO:
+            redirectToState(p, 9)
+        else:
+            tell(p.chat_id, FROWNING_FACE + " Scusa, non capisco quello che hai detto.")
+
+
+# ================================
+# ================================
+# ================================
+
+def dealWithsendTextCommand(p, sendTextCommand, markdown=False):
+    split = sendTextCommand.split()
+    if len(split)<3:
+        tell(p.chat_id, 'Commands should have at least 2 spaces')
+        return
+    if not split[1].isdigit():
+        tell(p.chat_id, 'Second argumnet should be a valid chat_id')
+        return
+    id = int(split[1])
+    sendTextCommand = ' '.join(split[2:])
+    if tell_person(id, sendTextCommand, markdown=markdown):
+        user = person.getPersonByChatId(id)
+        tell(p.chat_id, 'Successfully sent text to ' + user.name)
+    else:
+        tell(p.chat_id, 'Problems in sending text')
+
 
 # ================================
 # ================================
@@ -684,6 +864,12 @@ class WebhookHandler(webapp2.RequestHandler):
                   reply("You are in state " + str(p.state) + ": " + STATES[p.state])
               else:
                   reply("You are in state " + str(p.state))
+            elif WORK_IN_PROGRESS and not p.isAdmin():
+                reply(UNDER_CONSTRUCTION + " Il sistema è in aggiornamento, riprova più tardi.")
+            elif text.startswith('/rec_'):
+                sendVoiceLocationTranslationFromCommand(p, text, userInfo = p.isAdmin())
+            elif text.startswith('/sendText') and p.isAdmin():
+                dealWithsendTextCommand(p, text, markdown=False)
             elif p.state == -1:
                 # INITIAL STATE
                 if text in ['/help', BOTTONE_INFO]:
@@ -702,8 +888,10 @@ class WebhookHandler(webapp2.RequestHandler):
                 elif text==BOTTONE_ASCOLTA:
                     goToAscolta(p)
                     # state 30
-                elif chat_id in key.MASTER_CHAT_ID:
-                    if text == '/test':
+                elif p.isAdmin():
+                    if text == BOTTONE_ADMIN:
+                        redirectToState(p, 9)
+                    elif text == '/test':
                         reply('test')
                         #reply(geoUtils.getLocationTest())
                         #taskqueue.add(url='/worker', params={'key': key})
@@ -743,8 +931,6 @@ class WebhookHandler(webapp2.RequestHandler):
                     elif text == '/initApproxLoc':
                         recording.initializeApproxLocations()
                         reply('Reinitialized approx locations. ')
-                    elif text.startswith('/rec_'):
-                        sendVoiceAndLocation(p, text)
                     elif text == '/remFormatVoice':
                         c = recording.removeFormatVoice()
                         reply("removed rec format voice: " + str(c))
@@ -776,35 +962,35 @@ class WebhookHandler(webapp2.RequestHandler):
                 if text == BOTTONE_ANNULLA:
                     restart(p, "Operazione annullata.")
                 elif location!=None:
-                    person.setLocation(p,location)
+                    person.setLocation(p,location['latitude'], location['longitude'])
                     luogo = geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8')
                     dealWithPlaceAndMicInstructions(p)
                     #state 20
                 elif text.startswith('('):
                     text_split = text[1:-1].split(",")
-                    loc = {'latitude': float(text_split[0]), 'longitude': float(text_split[1])}
-                    person.setLocation(p,loc)
-                    sendLocation(p.chat_id, loc)
+                    latitude = float(text_split[0])
+                    longitude = float(text_split[1])
+                    person.setLocation(p, latitude, longitude)
+                    sendLocation(p.chat_id, latitude, longitude)
                     dealWithPlaceAndMicInstructions(p)
                     #state 20
                 else:
                     place = geoUtils.getLocationFromName(text)
                     if place:
-                        loc = {'latitude': place.latitude, 'longitude': place.longitude}
-                        person.setLocation(p,loc)
+                        person.setLocation(p,place.latitude, place.longitude)
                         dealWithPlaceAndMicInstructions(p)
                          #state 20
                     else:
                         reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
-                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_INVIA_LOCATION],[BOTTONE_ANNULLA]])
             elif p.state == 20:
                 # REGISTRA
                 if text == BOTTONE_INDIETRO:
                     restart(p, "Operazione annullata.")
                     # state = -1
                 elif text == BOTTONE_CAMBIA_LUOGO:
-                    reply("Ok, cambiamo il luogo. " +
-                          ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+                    reply("Ok, cambiamo il luogo.\n" +
+                          ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_INVIA_LOCATION],[BOTTONE_ANNULLA]])
                     person.setState(p,-2)
                     # state -2
                 elif voice!=None:
@@ -829,34 +1015,37 @@ class WebhookHandler(webapp2.RequestHandler):
                 #     sendAudio(p.chat_id, file_id)
                 #     restart(p)
                 else:
-                    reply(FROWNING_FACE + " Scusa non capisco quello che hai detto.")
+                    reply(FROWNING_FACE + " Scusa non capisco quello che hai detto, devi inserire la registrazione tenendo premuto il microfono.")
             elif p.state == 21:
                 # CONFIRM RECORDING
                 if text == BOTTONE_ANNULLA:
                     restart(p, "Operazione annullata.")
                     # state = -1
                 elif text == 'OK':
-                    reply("Potresti lasciare una traduzione in italiano della registrazione?", kb=[['SI','NO']])
+                    reply("Riteniamo utile avere una spiegazione in italiano delle registrazione "
+                          "in modo da essere comprensibili da tutti gli utenti. "
+                          "Potresti lasciare una spiegazione della tua registrazione? ",
+                          kb=[['SI','NO']])
                     person.setState(p, 22)
                 elif text == 'REGISTRA DI NUOVO':
                     person.removeLastRecording(p)
-                    reply("Quando sei pronta/o pronuncia una frase nel dialetto del luogo inserito, ad esempio un proverbio o un modo di dire, "
-                          "tenendo premuto il tasto del microfono.", kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_ANNULLA]])
+                    reply(MIC_INSTRUCTIONS, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_ANNULLA]])
                     person.setState(p, 20)
                 else:
-                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
+                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto, premi *OK* per confermare la registrazione.")
             elif p.state == 22:
                 # CHECK IF AVAILABLE FOR TRANSLATION
                 if text == 'SI':
-                    reply("*Scrivi* qua sotto la traduzione in italiano della registrazione",
+                    reply("*Scrivi* qua sotto la traduzione in italiano della registrazione  "
+                          "(in aggiunta puoi inserire la trascrizione in dialetto e il significato in caso si tratti di un proverbio)",
                           kb=[[BOTTONE_ANNULLA]])
                     person.setState(p, 23)
                 elif text == 'NO':
                     reply("Grazie per il tuo contributo!")
-                    #sendNewRecordingNotice(p)
+                    sendNewRecordingNotice(p)
                     restart(p)
                 else:
-                    reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
+                    reply(FROWNING_FACE + "Premi *SI* e poi inserisci il testo!")
             elif p.state == 23:
                 if text == '':
                     reply("Input non valido. *Scrivi* qua sotto la traduzione in italiano della registrazione",
@@ -866,7 +1055,8 @@ class WebhookHandler(webapp2.RequestHandler):
                     text = ''
                 # INSERT TRANSLATION
                 recording.addTranslation(p.last_recording_file_id, text)
-                reply("Grazie per il tuo contributo!")
+                reply("Grazie per il tuo contributo! "
+                      "La registrazione è in attesa di approvazione, riceverai un messaggio a breve.")
                 sendNewRecordingNotice(p)
                 restart(p)
             elif p.state == 30:
@@ -905,7 +1095,7 @@ class WebhookHandler(webapp2.RequestHandler):
                         dealWithGuessedLocation(p, guessed_loc)
                     else:
                         reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
-                              ISTRUZIONI_POSIZIONE, kb = [[BOTTONE_ANNULLA]])
+                              ISTRUZIONI_POSIZIONE_GUESS, kb = [[BOTTONE_ANNULLA]])
             elif p.state == 32:
                 #ASCOLTA - RICERCA LUOGO
                 if location!=None:
@@ -924,12 +1114,13 @@ class WebhookHandler(webapp2.RequestHandler):
                 # REGISTRAZIONI RECENTI
                 if text== BOTTONE_INDIETRO:
                     goToAscolta(p)
-                elif text.startswith('/rec_'):
-                    sendVoiceAndLocation(p, text)
                 else:
                     reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
             else:
-                reply("Se è verificato un problemino... segnalalo scrivendo a @kercos")
+                logging.debug("Sending {0} to state {1}".format(p.getName(), str(p.state)))
+                repeatState(p, input=text)
+            #else:
+            #    reply("Se è verificato un problemino... segnalalo scrivendo a @kercos")
 
 app = webapp2.WSGIApplication([
     ('/me', MeHandler),
@@ -940,4 +1131,8 @@ app = webapp2.WSGIApplication([
     ('/webhook', WebhookHandler),
     ('/recordings/([^/]+)?', recording.DownloadRecordingHandler),
     ('/dynamicaudiomapdata.geojson', recording.ServeDynamicAudioGeoJsonFileHandler),
+    ('/', RedirectMappa),
 ], debug=True)
+
+possibles = globals().copy()
+possibles.update(locals())

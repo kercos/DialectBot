@@ -11,6 +11,16 @@ indexes:
   - name: last_seen
     direction: desc
 
+- kind: Recording
+  properties:
+  - name: approved
+  - name: date_time
+    direction: desc
+
+- kind: Recording
+  properties:
+  - name: approved
+  - name: file_id
 
 # This index.yaml is automatically updated whenever the dev_appserver
 # detects that a new type of query is run.  If you want to manage the
