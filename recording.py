@@ -289,7 +289,7 @@ def createGeoJsonElement(rec, addRandomCoordNoise=True):
     if addRandomCoordNoise:
         longitude += utility.getRandomFloat(MAX_COORDINATES_RANDOM_NOISE)
         latitude += utility.getRandomFloat(MAX_COORDINATES_RANDOM_NOISE)
-    name_text = person.getPersonByChatId(rec.chat_id).getName()
+    name_text = person.getPersonByChatId(rec.chat_id).getFirstName()
     translation_text = rec.translation.encode('utf-8') if rec.translation else "(nessuna traduzione)"
     audioUrl = "http://dialectbot.appspot.com/recordings/{0}.oga".format(rec.file_id)
     element = {

@@ -32,6 +32,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import channel
 from google.appengine.api import taskqueue
 from google.appengine.ext import deferred
+from google.appengine.ext.db import datastore_errors
 
 #from google.appengine.ext import vendor
 #vendor.add('lib')
@@ -68,7 +69,7 @@ Se pensi di non parlare nessun dialetto specifico ti consigliamo \
 di utilizzare questo strumento per registrare parenti, amici o persone \
 che incontri quando ti capita di viaggiare tra paesini sperduti in Italia.
 
-Se vai sul sito http://dialectbot.appspot.com potrai *visualizzare* e *ascoltare* tutte le \
+Se vai sul sito http://dialectbot.appspot.com potrai *visualizzare* (e *ascoltare*) tutte le \
 registrazioni sulla *mappa* 🗺 !
 
 Aiutaci a far conoscere questo bot invitando altri amici e votandolo su \
@@ -140,6 +141,7 @@ STATES = {
     30: 'Ascolta',
     31: 'Indovina Luogo',
     32: 'Ricerca Luogo',
+    8:  'Info',
     9:  'Admin',
     91: 'Amin -> approva registrazioni'
 }
@@ -208,10 +210,10 @@ def restart(p, txt=None):
     reply_txt += "Premi su *{0}* o *{1}* se vuoi ascoltare o registrare una frase in un dialetto.".format(
         BOTTONE_ASCOLTA, BOTTONE_REGISTRA
     )
-    third_row_buttons = [BOTTONE_INFO]
+    second_row_buttons = [BOTTONE_INFO]
     if p.isAdmin():
-        third_row_buttons.append(BOTTONE_ADMIN)
-    tell(p.chat_id, reply_txt, kb=[[BOTTONE_ASCOLTA,BOTTONE_REGISTRA], [BOTTONE_INVITA], third_row_buttons])
+        second_row_buttons.append(BOTTONE_ADMIN)
+    tell(p.chat_id, reply_txt, kb=[[BOTTONE_ASCOLTA,BOTTONE_REGISTRA], second_row_buttons])
     person.setState(p, -1)
 
 def restartAllUsers(msg):
@@ -237,11 +239,11 @@ def restartTest(msg):
     return count
 
 
-def init_user(p, cmd, name, last_name, username):
+def init_user(p, name, last_name, username):
     if (p.name.encode('utf-8') != name):
         p.name = name
         p.put()
-    if (p.last_name.encode('utf-8') != last_name):
+    if (p.getLastName() != last_name):
         p.last_name = last_name
         p.put()
     if (p.username != username):
@@ -260,25 +262,36 @@ def get_time_string(date):
     newdate = date + timedelta(hours=1)
     return str(newdate).split(" ")[1].split(".")[0]
 
-def broadcast(msg, restart_user=False, sendDebug=True):
-    qry = Person.query().order(-Person.last_mod)
-    disabled = 0
-    count = 0
-    for p in qry:
-        if p.enabled:
-            count += 1
-            tell(p.chat_id, msg)
-            sleep(0.100)  # no more than 10 messages per second
-            if restart_user:
-                restart(p)
-        else:
-            disabled += 1
-    if sendDebug:
-        enabledCount = qry.count() - disabled
-        msg_debug = 'Messaggio inviato a ' + str(qry.count()) + ' persone.\n' + \
-                    'Messaggio ricevuto da ' + str(enabledCount) + ' persone.\n' + \
-                    'Persone disabilitate: ' + str(disabled)
-        tell(key.FEDE_CHAT_ID, msg_debug)
+def broadcast(sender, msg, restart_user=False, curs=None, enabledCount = 0):
+    #return
+
+    BROADCAST_COUNT_REPORT = utility.unindent(
+        """
+        Mesage sent to {} people
+        Enabled: {}
+        Disabled: {}
+        """
+    )
+
+    users, next_curs, more = Person.query().fetch_page(50, start_cursor=curs)
+    try:
+        for p in users:
+            if p.enabled:
+                enabledCount += 1
+                if restart_user:
+                    restart(p)
+                tell(p.chat_id, msg, sleepDelay=True)
+    except datastore_errors.Timeout:
+        sleep(1)
+        deferred.defer(broadcast, sender, msg, restart_user, curs, enabledCount)
+        return
+    if more:
+        deferred.defer(broadcast, sender, msg, restart_user, next_curs, enabledCount)
+    else:
+        total = Person.query().count()
+        disabled = total - enabledCount
+        msg_debug = BROADCAST_COUNT_REPORT.format(str(total), str(enabledCount), str(disabled))
+        tell(sender.chat_id, msg_debug)
 
 def getRecentRecordings(p):
     recordings = ''
@@ -318,9 +331,9 @@ def getLastContibutors(daysAgo):
 
 def sendNewRecordingNotice(p):
     rec = recording.getRecording(p.last_recording_file_id)
-    logging.debug("Sendin new recording notice /rec_" + str(rec.key.id()))
+    logging.debug("Sending new recording notice /rec_" + str(rec.key.id()))
     tell(key.FEDE_CHAT_ID, "New recording: /rec_" + str(rec.key.id()) + " from user {0}: {1}".format(
-        str(p.chat_id), p.getNameLastNameUserName()), markdown=False)
+        str(p.chat_id), p.getUserInfoString()), markdown=False)
 
 def getInfoCount():
     c = Person.query().count()
@@ -331,9 +344,9 @@ def getInfoCount():
 def tellmyself(p, msg):
     tell(p.chat_id, "Udiete udite... " + msg)
 
-def tell_masters(msg):
+def tell_masters(msg, markdown=False, one_time_keyboard=False):
     for id in key.MASTER_CHAT_ID:
-        tell(id, msg)
+        tell(id, msg, markdown=markdown, one_time_keyboard = one_time_keyboard, sleepDelay=True)
 
 def tell_fede(msg):
     for i in range(100):
@@ -348,18 +361,17 @@ def tell_person(chat_id, msg, markdown=False):
     return False
 
 
-def tell(chat_id, msg, kb=None, markdown=True, inlineKeyboardMarkup=False, one_time_keyboard=False):
+def tell(chat_id, msg, kb=None, markdown=True, inlineKeyboardMarkup=False,
+         one_time_keyboard=True, sleepDelay=False):
     replyMarkup = {
         'resize_keyboard': True,
         'one_time_keyboard': one_time_keyboard
     }
-
     if kb:
         if inlineKeyboardMarkup:
             replyMarkup['inline_keyboard'] = kb
         else:
             replyMarkup['keyboard'] = kb
-
     try:
         resp = urllib2.urlopen(key.BASE_URL + 'sendMessage', urllib.urlencode({
             'chat_id': chat_id,
@@ -371,13 +383,18 @@ def tell(chat_id, msg, kb=None, markdown=True, inlineKeyboardMarkup=False, one_t
         })).read()
         logging.info('send response: ')
         logging.info(resp)
+        resp_json = json.loads(resp)
+        return resp_json['result']['message_id']
     except urllib2.HTTPError, err:
         if err.code == 403:
-            p = Person.query(Person.chat_id==chat_id).get()
-            p.enabled = False
-            p.put()
-            logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
-
+            p = person.getPersonByChatId(chat_id)
+            p.setEnabled(False, put=True)
+            # logging.info('Disabled user: ' + p.name.encode('utf-8') + ' ' + str(chat_id))
+        else:
+            logging.debug('Raising unknown err in tell() with msg = ' + msg)
+            raise err
+    if sleepDelay:
+        sleep(0.1)
 
 def sendVoiceFile(chat_id):
     try:
@@ -481,10 +498,10 @@ def sendVoiceLocationTranslationFromCommand(p, rec_command, userInfo = False):
 def sendVoiceLocationTranslation(p, rec, userInfo = False):
     if userInfo:
         user = person.getPersonByChatId(rec.chat_id)
-        tell(p.chat_id, 'User: {0} {1}'.format(str(user.chat_id), user.getNameLastNameUserName()))
-    tell(p.chat_id, 'Voice:')
+        tell(p.chat_id, 'Registrazione eseguita da: {}'.format(user.getFirstName()))
+    tell(p.chat_id, 'Audio:')
     sendVoiceFileId(p.chat_id, rec.file_id)
-    tell(p.chat_id, 'Location:')
+    tell(p.chat_id, 'Luogo:')
     sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
     sendTranslation(p.chat_id, rec)
 
@@ -508,6 +525,28 @@ def format_and_comment_distance(dst):
     if (dst>=15):
         return fmt_dst + ". Bravissima/o hai indovinato!"
     return fmt_dst + ". Wow, Strepitoso"
+
+
+# ================================
+# SEND ACTION
+# ================================
+
+def sendWaitingAction(chat_id, action_type='typing'):
+    try:
+        resp = urllib2.urlopen(key.BASE_URL + 'sendChatAction', urllib.urlencode({
+            'chat_id': chat_id,
+            'action': action_type,
+        })).read()
+        logging.info('send venue: ')
+        logging.info(resp)
+    except urllib2.HTTPError, err:
+        if err.code == 403:
+            p = Person.query(Person.chat_id == chat_id).get()
+            p.enabled = False
+            p.put()
+            logging.info('Disabled user: ' + p.getUserInfoString())
+        else:
+            logging.info('Unknown exception: ' + str(err))
 
 
 # ================================
@@ -643,7 +682,7 @@ class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
         msg = getWeeklyMessage()
-        broadcast(msg, restart_user=True)
+        broadcast(key.FEDE_CHAT_ID, msg, restart_user=True)
 
 def getWeeklyMessage():
     people_count = getInfoCount()
@@ -690,6 +729,34 @@ def repeatState(p, **kwargs):
         restart(p)
     else:
         method(p, **kwargs)
+
+# ================================
+# state 8: Info
+# ================================
+
+def goToState8(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        kb = [
+            [BOTTONE_INVITA],
+            [BOTTONE_INDIETRO]
+        ]
+
+        tell(p.chat_id, ISTRUZIONI, kb)
+    else:
+        if input == '':
+            tell(p.chat_id, "Input non valido.")
+        elif input == BOTTONE_INVITA:
+            tell(p.chat_id, "Inoltra il seguente messaggio a parenti e amici 😊")
+            sendWaitingAction(p.chat_id)
+            sleep(3)
+            tell(p.chat_id, MESSAGE_FOR_FRIENDS, kb = [[BOTTONE_INDIETRO]])
+        elif input == BOTTONE_INDIETRO:
+            restart(p)
+        else:
+            tell(p.chat_id, FROWNING_FACE + " Scusa, non capisco quello che hai detto.")
+
 
 # ================================
 # state 9: Admin
@@ -832,7 +899,7 @@ class WebhookHandler(webapp2.RequestHandler):
         #logging.debug('location: ' + str(location))
 
         def reply(msg=None, kb=None, markdown=True, inlineKeyboardMarkup=False):
-            tell(chat_id, msg, kb, markdown, inlineKeyboardMarkup)
+            tell(chat_id, msg, kb=kb, markdown=markdown, inlineKeyboardMarkup=inlineKeyboardMarkup)
 
         p = ndb.Key(Person, str(chat_id)).get()
 
@@ -842,12 +909,12 @@ class WebhookHandler(webapp2.RequestHandler):
             if text == '/help':
                 reply(ISTRUZIONI)
             if text.startswith("/start"):
-                tell_masters("New user: " + name)
                 p = person.addPerson(chat_id, name)
                 reply("Ciao " + name + ", " + "benvenuta/o!")
-                init_user(p, text, name, last_name, username)
+                init_user(p, name, last_name, username)
                 restart(p)
                 # state = -1 or -2
+                tell_masters("New user: " + name)
             else:
                 reply("Premi su /start se vuoi iniziare. "
                       "Se hai qualche domanda o suggerimento non esitare di contattarmi cliccando su @kercos")
@@ -856,7 +923,7 @@ class WebhookHandler(webapp2.RequestHandler):
             person.updateUsername(p, username)
             if text.startswith("/start"):
                 reply("Ciao " + name + ", " + "ben ritrovata/o!")
-                init_user(p, text, name, last_name, username)
+                init_user(p, name, last_name, username)
                 restart(p)
                 # state = -1 or -2
             elif text=='/state':
@@ -873,10 +940,7 @@ class WebhookHandler(webapp2.RequestHandler):
             elif p.state == -1:
                 # INITIAL STATE
                 if text in ['/help', BOTTONE_INFO]:
-                    reply(ISTRUZIONI)
-                elif text == BOTTONE_INVITA:
-                    reply('Inoltra il seguente messaggio a parenti e amici 😊')
-                    reply(MESSAGE_FOR_FRIENDS)
+                    redirectToState(p, 8)
                 elif text==BOTTONE_REGISTRA:
                     if p.location:
                         dealWithPlaceAndMicInstructions(p)
@@ -896,14 +960,6 @@ class WebhookHandler(webapp2.RequestHandler):
                         #reply(geoUtils.getLocationTest())
                         #taskqueue.add(url='/worker', params={'key': key})
                         #geoUtils.test_Google_Map_Api()
-                    elif text == '/testContactAndLocation':
-                        reply("Test contatto e location", kb=[[BOTTONE_CONTACT], [BOTTONE_LOCATION]])
-                    elif text == '/testInlineKeyboard':
-                        reply("Test contatto e location", kb=[[BOTTONE_CALLBACK1,BOTTONE_CALLBACK2],[BOTTONE_CALLBACK3]], inlineKeyboardMarkup=True)
-                    elif text == '/testUnicode':
-                        txt = geoUtils.getLocationTest().address.encode('utf-8')
-                        #txt = "Questa è una frase con unicode"
-                        reply(txt + " " + str(type(txt)) )
                     elif text== '/infocount':
                         c = getInfoCount()
                         reply("Number of users: " + str(c))
@@ -936,10 +992,10 @@ class WebhookHandler(webapp2.RequestHandler):
                         reply("removed rec format voice: " + str(c))
                     elif text.startswith('/broadcast ') and len(text)>11:
                         msg = text[11:]
-                        deferred.defer(broadcast, msg, restart_user=False)
+                        deferred.defer(broadcast, p.chat_id, msg, restart_user=False)
                     elif text.startswith('/restartBroadcast ') and len(text) > 18:
                         msg = text[18:]
-                        deferred.defer(broadcast, msg, restart_user=True)
+                        deferred.defer(broadcast, p.chat_id, msg, restart_user=True)
                     elif text.startswith('/self ') and len(text)>6:
                         msg = text[6:]
                         reply(msg)
@@ -956,7 +1012,7 @@ class WebhookHandler(webapp2.RequestHandler):
                     #setLanguage(d.language)
                 else:
                     reply("Scusa non capisco quello che hai detto.\n"
-                          "Usa i pulsanti sotto o premi HELP per avere informazioni.")
+                          "Usa i pulsanti sotto o premi {} per avere informazioni.".format(BOTTONE_INFO))
             elif p.state == -2:
                 # POSIZIONE
                 if text == BOTTONE_ANNULLA:
@@ -1019,6 +1075,7 @@ class WebhookHandler(webapp2.RequestHandler):
             elif p.state == 21:
                 # CONFIRM RECORDING
                 if text == BOTTONE_ANNULLA:
+                    person.removeLastRecording(p)
                     restart(p, "Operazione annullata.")
                     # state = -1
                 elif text == 'OK':
@@ -1117,10 +1174,15 @@ class WebhookHandler(webapp2.RequestHandler):
                 else:
                     reply(FROWNING_FACE + "Scusa non capisco quello che hai detto.")
             else:
-                logging.debug("Sending {0} to state {1}".format(p.getName(), str(p.state)))
+                logging.debug("Sending {0} to state {1}".format(p.getFirstName(), str(p.state)))
                 repeatState(p, input=text)
             #else:
             #    reply("Se è verificato un problemino... segnalalo scrivendo a @kercos")
+
+    def handle_exception(self, exception, debug_mode):
+        logging.exception(exception)
+        tell(key.FEDE_CHAT_ID, "❗ Detected Exception: " + str(exception))
+
 
 app = webapp2.WSGIApplication([
     ('/me', MeHandler),

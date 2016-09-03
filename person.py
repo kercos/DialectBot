@@ -4,6 +4,7 @@ import logging
 from google.appengine.ext import ndb
 import recording
 import key
+import utility
 
 class Person(ndb.Model):
     chat_id = ndb.IntegerProperty()
@@ -22,24 +23,34 @@ class Person(ndb.Model):
         if put:
             self.put()
 
-    def getName(self):
+    def getFirstName(self, escapeMarkdown=True):
+        if escapeMarkdown:
+            return utility.escapeMarkdown(self.name.encode('utf-8'))
         return self.name.encode('utf-8')
 
-    def getLastName(self):
-        return self.last_name.encode('utf-8') if self.last_name!='-' else ''
+    def getLastName(self, escapeMarkdown=True):
+        if self.last_name==None:
+            return None
+        if escapeMarkdown:
+            return utility.escapeMarkdown(self.last_name.encode('utf-8'))
+        return self.last_name.encode('utf-8')
 
     def getUsername(self):
-        return self.username.encode('utf-8')
+        return self.username.encode('utf-8') if self.username else None
 
-    def getNameLastName(self):
-        result = self.getName() + ' ' + self.getLastName()
-        return result.strip()
+    def getUserInfoString(self, escapeMarkdown=True):
+        info = self.getFirstName(escapeMarkdown)
+        if self.last_name:
+            info += ' ' + self.getLastName(escapeMarkdown)
+        if self.username:
+            info += ' @' + self.getUsername()
+        info += ' ({})'.format(self.chat_id)
+        return info
 
-    def getNameLastNameUserName(self):
-        result = self.getNameLastName()
-        if self.username != '-':
-            result += ' @' + self.getUsername()
-        return result
+    def setEnabled(self, enabled, put=False):
+        self.enabled = enabled
+        if put:
+            self.put()
 
     def setLast_recording_file_id(self, file_id, put=True):
         self.last_recording_file_id = file_id

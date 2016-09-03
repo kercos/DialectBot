@@ -7,7 +7,7 @@ import json
 import key
 import re
 import random
-
+import textwrap
 
 def getFile(file_id):
     try:
@@ -44,3 +44,11 @@ def hasOnlyDigits(s):
 
 def getRandomFloat(maxValue=1.0):
     return random.random() * maxValue
+
+def escapeMarkdown(text):
+    for char in '*_`[':
+        text = text.replace(char, '\\'+char)
+    return text
+
+def unindent(s):
+    return re.sub('[ ]+', ' ', textwrap.dedent(s))
