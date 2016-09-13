@@ -262,7 +262,7 @@ def get_time_string(date):
     newdate = date + timedelta(hours=1)
     return str(newdate).split(" ")[1].split(".")[0]
 
-def broadcast(sender, msg, restart_user=False, curs=None, enabledCount = 0):
+def broadcast(sender_chat_id, msg, restart_user=False, curs=None, enabledCount = 0):
     #return
 
     BROADCAST_COUNT_REPORT = utility.unindent(
@@ -273,25 +273,27 @@ def broadcast(sender, msg, restart_user=False, curs=None, enabledCount = 0):
         """
     )
 
-    users, next_curs, more = Person.query().fetch_page(50, start_cursor=curs)
     try:
-        for p in users:
-            if p.enabled:
-                enabledCount += 1
-                if restart_user:
-                    restart(p)
-                tell(p.chat_id, msg, sleepDelay=True)
+        users, next_curs, more = Person.query().fetch_page(50, start_cursor=curs)
     except datastore_errors.Timeout:
         sleep(1)
-        deferred.defer(broadcast, sender, msg, restart_user, curs, enabledCount)
+        deferred.defer(broadcast, sender_chat_id, msg, restart_user, curs, enabledCount)
         return
+
+    for p in users:
+        if p.enabled:
+            enabledCount += 1
+            if restart_user:
+                restart(p)
+            tell(p.chat_id, msg, sleepDelay=True)
+
     if more:
-        deferred.defer(broadcast, sender, msg, restart_user, next_curs, enabledCount)
+        deferred.defer(broadcast, sender_chat_id, msg, restart_user, next_curs, enabledCount)
     else:
         total = Person.query().count()
         disabled = total - enabledCount
         msg_debug = BROADCAST_COUNT_REPORT.format(str(total), str(enabledCount), str(disabled))
-        tell(sender.chat_id, msg_debug)
+        tell(sender_chat_id, msg_debug)
 
 def getRecentRecordings(p):
     recordings = ''
@@ -501,7 +503,8 @@ def sendVoiceLocationTranslation(p, rec, userInfo = False):
         tell(p.chat_id, 'Registrazione eseguita da: {}'.format(user.getFirstName()))
     tell(p.chat_id, 'Audio:')
     sendVoiceFileId(p.chat_id, rec.file_id)
-    tell(p.chat_id, 'Luogo:')
+    msg = 'Luogo: ' + geoUtils.getComuneProvinciaFromCoordinates(rec.location.lat, rec.location.lon)
+    tell(p.chat_id, msg)
     sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
     sendTranslation(p.chat_id, rec)
 
@@ -606,7 +609,7 @@ def dealWithGuessedLocation(p,guessed_loc):
     lat_gold, lon_gold  = person.getLastRecordingLatLonLocation(p)
     logging.debug('Gold loc: ' + str((lat_gold, lon_gold)))
     logging.debug('Guessed loc: ' + str(guessed_loc))
-    luogo = '*' + geoUtils.getLocationFromPosition(lat_gold, lon_gold).address.encode('utf-8') + '*'
+    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(lat_gold, lon_gold) + '*'
     #dist = geoUtils.HaversineDistance(lat_guessed, lon_guessed, lat_gold, lon_gold)
     dist = geoUtils.distance((lat_guessed, lon_guessed), (lat_gold, lon_gold))
     distFormatted = format_and_comment_distance(dist)
@@ -616,7 +619,7 @@ def dealWithGuessedLocation(p,guessed_loc):
     sendTranslation(p.chat_id, rec)
 
 def dealWithPlaceAndMicInstructions(p):
-    luogo = '*' + geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8') + '*'
+    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(p.location.lat, p.location.lon) + '*'
     instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
     tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
     person.setState(p, 20)
@@ -628,7 +631,7 @@ def dealWithFindClosestRecording(p, location):
         sendRecording(p.chat_id, rec)
         sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
         sendTranslation(p.chat_id, rec)
-        luogo = '*' + geoUtils.getLocationFromPosition(rec.location.lat, rec.location.lon).address.encode('utf-8') + '*'
+        luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(rec.location.lat, rec.location.lon) + '*'
         dst = geoUtils.distance((location['latitude'], location['longitude']),(rec.location.lat,rec.location.lon))
         tell(p.chat_id, "Luogo della registrazione: " + luogo +
              ". La distanza dal luogo inserito è di: " + format_distance(dst) + ".")
@@ -910,11 +913,11 @@ class WebhookHandler(webapp2.RequestHandler):
                 reply(ISTRUZIONI)
             if text.startswith("/start"):
                 p = person.addPerson(chat_id, name)
-                reply("Ciao " + name + ", " + "benvenuta/o!")
+                reply("Ciao " + p.getFirstName() + ", " + "benvenuta/o!")
                 init_user(p, name, last_name, username)
                 restart(p)
                 # state = -1 or -2
-                tell_masters("New user: " + name)
+                tell_masters("New user: " + p.getFirstName())
             else:
                 reply("Premi su /start se vuoi iniziare. "
                       "Se hai qualche domanda o suggerimento non esitare di contattarmi cliccando su @kercos")
@@ -922,7 +925,7 @@ class WebhookHandler(webapp2.RequestHandler):
             # known user
             person.updateUsername(p, username)
             if text.startswith("/start"):
-                reply("Ciao " + name + ", " + "ben ritrovata/o!")
+                reply("Ciao " + p.getFirstName() + ", " + "ben ritrovata/o!")
                 init_user(p, name, last_name, username)
                 restart(p)
                 # state = -1 or -2
@@ -1018,9 +1021,13 @@ class WebhookHandler(webapp2.RequestHandler):
                 if text == BOTTONE_ANNULLA:
                     restart(p, "Operazione annullata.")
                 elif location!=None:
-                    person.setLocation(p,location['latitude'], location['longitude'])
-                    luogo = geoUtils.getLocationFromPosition(p.location.lat, p.location.lon).address.encode('utf-8')
-                    dealWithPlaceAndMicInstructions(p)
+                    luogo = geoUtils.getComuneProvinciaFromCoordinates(location['latitude'], location['longitude'])
+                    if luogo:
+                        person.setLocation(p,location['latitude'], location['longitude'])
+                        dealWithPlaceAndMicInstructions(p)
+                    else:
+                        reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
+                              ISTRUZIONI_POSIZIONE, kb=[[BOTTONE_INVIA_LOCATION], [BOTTONE_ANNULLA]])
                     #state 20
                 elif text.startswith('('):
                     text_split = text[1:-1].split(",")

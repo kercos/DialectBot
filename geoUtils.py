@@ -7,27 +7,45 @@ import math
 import key
 import googlemaps
 import logging
+import urllib
+import jsonUtil
 
 #https://raw.githubusercontent.com/dakk/Italia.json/master/italia_comuni.json
 
-#GEOLOCATOR = Nominatim()
-GEOLOCATOR = GoogleV3(key.GOOGLE_API_KEY)
+GEOLOCATOR = Nominatim()
+#GEOLOCATOR = GoogleV3(key.GOOGLE_API_KEY)
 
 def getLocationFromName(locationName):
     try:
-        location = GEOLOCATOR.geocode(locationName, timeout=10, exactly_one=True, language='it', region='it') #default one answer for Nominatim (not google)
+        #location = GEOLOCATOR.geocode(locationName, timeout=10, exactly_one=True, language='it', region='it') #default one answer for Nominatim (not google)
+        location = GEOLOCATOR.geocode(locationName, timeout=10, exactly_one=True, language='it')  # default one answer for Nominatim (not google)
         return location
     except GeocoderServiceError:
         logging.error('GeocoderServiceError occored')
 
 
-def getLocationFromPosition(lat, lon):
+def getAddressFromPosition(lat, lon):
     try:
         location = GEOLOCATOR.reverse((lat, lon), timeout=10, exactly_one=True, language='it') #default one answer for Nominatim (not google)
-        return location
+        return location.address.encode('utf-8')
     except GeocoderServiceError:
         logging.error('GeocoderServiceError occored')
 
+# see http://maps.googleapis.com/maps/api/geocode/json?language=it&latlng=46.0682115,11.1221167665254&sensor=true
+def getComuneProvinciaFromCoordinates(lat, lon):
+    url = "https://maps.googleapis.com/maps/api/geocode/json?" \
+          "language=it&latlng={},{}&sensor=true&key={}".format(lat,lon,key.GOOGLE_API_KEY)
+    #logging.debug(url)
+    response = urllib.urlopen(url)
+    emojiTagsDict = jsonUtil.json_loads_byteified(response.read())
+    #logging.debug(str(emojiTagsDict))
+    if emojiTagsDict['status']=='OK':
+        results = emojiTagsDict['results']
+        address_components = results[0]['address_components']
+        comune = [x for x in address_components if x['types']==[ "administrative_area_level_3", "political" ]][0]["long_name"]
+        provincia = [x for x in address_components if x['types']==[ "administrative_area_level_2", "political" ]][0]["long_name"]
+        return "{}, {}".format(comune, provincia)
+    return None
 
 def distance(point1, point2):
     #point1 = (41.49008, -71.312796)
