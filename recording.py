@@ -41,6 +41,12 @@ class Recording(ndb.Model):
         self.approved = value
         self.put()
 
+    def getRecCommand(self, escape=True):
+        result = "/rec_{}".format(self.key.id())
+        if escape:
+            result = utility.escapeMarkdown(result)
+        return result
+
 def deleteLocationApprox():
     qry = Recording.query()
     for rec in qry:

@@ -41,11 +41,17 @@ def getComuneProvinciaFromCoordinates(lat, lon):
     #logging.debug(str(emojiTagsDict))
     if emojiTagsDict['status']=='OK':
         results = emojiTagsDict['results']
-        address_components = results[0]['address_components']
-        comune = [x for x in address_components if x['types']==[ "administrative_area_level_3", "political" ]][0]["long_name"]
-        provincia = [x for x in address_components if x['types']==[ "administrative_area_level_2", "political" ]][0]["long_name"]
-        return "{}, {}".format(comune, provincia)
-    return None
+        for result_item in results:
+            address_components = result_item['address_components']
+            comune_field = [x for x in address_components if x['types']==[ "administrative_area_level_3", "political" ]]
+            comune = comune_field[0]["long_name"] if comune_field else None
+            provincia_field = [x for x in address_components if x['types']==[ "administrative_area_level_2", "political" ]]
+            provincia = provincia_field[0]["long_name"] if provincia_field else None
+            if comune and provincia:
+                return "{}, {}".format(comune, provincia)
+        #return provincia
+    logging.debug("No comune found for {} {}".format(lat, lon))
+    raise LookupError
 
 def distance(point1, point2):
     #point1 = (41.49008, -71.312796)

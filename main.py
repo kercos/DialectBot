@@ -108,8 +108,8 @@ Hai tre modi per inserire il luogo del dialetto che vuoi registrare:
 ISTRUZIONI_POSIZIONE_GUESS = \
 """
 Hai due modi per indovinare il luogo della registrazione:
-🔶 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
-🔷 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
+🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
+🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
       📎 premi la graffetta in basso e premi su "Posizione"
       📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
 """
@@ -117,8 +117,8 @@ Hai due modi per indovinare il luogo della registrazione:
 ISTRUZIONI_POSIZIONE_SEARCH = \
 """
 Hai due modi per cercare le registrazioni vicino ad un determinato luogo:
-🔶 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
-🔷 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
+🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
+🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
       📎 premi la graffetta in basso e premi su "Posizione"
       📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
 """
@@ -320,16 +320,19 @@ def getAllRecordings(p):
 def getLastContibutors(daysAgo):
     dateThreshold = time_util.get_time_days_ago(daysAgo)
     names = set()
+    recsCommands = []
     count = 0
-    qry = Recording.query(Recording.date_time > dateThreshold, Recording.approved==recording.REC_ARROVED_STATE_TRUE)
-    for r in qry:
+    recs = Recording.query(Recording.date_time > dateThreshold, Recording.approved==recording.REC_ARROVED_STATE_TRUE).fetch()
+    for r in recs:
         if r.chat_id<=0:
             continue
         name = person.getPersonByChatId(r.chat_id).name
         names.add(name)
+        recsCommands.append(r.getRecCommand())
         count += 1
     namesString = ', '.join([x.encode('utf-8') for x in names])
-    return count, namesString
+    recCommandsString = '\n'.join(['🎙 {}'.format(x) for x in recsCommands])
+    return count, namesString, recCommandsString
 
 def sendNewRecordingNotice(p):
     rec = recording.getRecording(p.last_recording_file_id)
@@ -596,7 +599,7 @@ def dealWithRandomRecording(p):
         tell(p.chat_id, "Scusa, non abbiamo altre registrazioni disponibili, chidi ai tuoi amici di inserirne altre", kb=[[BOTTONE_ANNULLA]])
         restart(p)
     else:
-        tell(p.chat_id, "Ascolta l'audio seguente e inserisci la posizione geografica da dove credi che provenga")
+        tell(p.chat_id, "Ascolta l'audio seguente e prova ad indovinare da dove proviene 😀")
         sendRecording(p.chat_id, randomRecording)
         person.setLastRecording(p,randomRecording)
         logging.debug("Last recording id: " + str(p.last_recording_file_id))
@@ -689,20 +692,32 @@ class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
 
 def getWeeklyMessage():
     people_count = getInfoCount()
-    contr_count, contr_namesString = getLastContibutors(7)
-    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n\n"
+    contr_count, contr_namesString, recCommandsString = getLastContibutors(7)
+    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n"
     if contr_count > 0:
         if contr_count == 1:
-            msg += "Nell'ultima settimana abbiamo ricevuto una registrazione! " \
-                   "Un grande ringraziamento a " + contr_namesString + '! ' + CLAPPING_HANDS
+            msg += utility.unindent(
+                """
+                Nell'ultima settimana abbiamo ricevuto una registrazione!
+                Un grande ringraziamento a *{}*! {}\n
+                Se vuoi ascoltarla premi su questo comando:\n{}
+                """.format(contr_namesString, CLAPPING_HANDS, recCommandsString)
+            )
         else:
-            msg += "Nell'ultima settimana abbiamo ricevuto " + str(contr_count) + \
-                   " registrazioni! " \
-                   "Un grande ringraziamento a " + contr_namesString + '! ' + CLAPPING_HANDS * contr_count
+            msg += utility.unindent(
+                """
+                Nell'ultima settimana abbiamo ricevuto {} registrazioni!
+                Un grande ringraziamento a *{}*! {}\n
+                Se vuoi ascoltarle premi su questi comandi:\n{}
+                """.format(contr_count, contr_namesString, CLAPPING_HANDS*contr_count, recCommandsString)
+            )
     else:
         msg += "Purtroppo questa settimana non abbiamo ricevuto nessuna nuova registrazione " + FROWNING_FACE
 
-    msg += "\n\nAiutaci a crescere: aggiungi nuove registrazioni del tuo dialetto tramite il bot " \
+    msg += "\nSe vai sul sito http://dialectbot.appspot.com potrai " \
+           "*visualizzare* (e *ascoltare*) tutte le registrazioni sulla *mappa* 🗺 !"
+
+    msg += "\n\n*Aiutaci a crescere*: aggiungi nuove registrazioni del tuo dialetto tramite il bot " \
            "e invita altre persone ad unirsi! " + SMILY
     return msg
 
@@ -963,7 +978,7 @@ class WebhookHandler(webapp2.RequestHandler):
                         #reply(geoUtils.getLocationTest())
                         #taskqueue.add(url='/worker', params={'key': key})
                         #geoUtils.test_Google_Map_Api()
-                    elif text== '/infocount':
+                    elif text== '/infoCounts':
                         c = getInfoCount()
                         reply("Number of users: " + str(c))
                     elif text == '/restartUsers':
@@ -1003,7 +1018,7 @@ class WebhookHandler(webapp2.RequestHandler):
                         msg = text[6:]
                         reply(msg)
                     elif text=='/lastContributors':
-                        count, namesString = getLastContibutors(300)
+                        count, namesString, recCommandsString = getLastContibutors(300)
                         msg = "Contributors: " + str(count) + "\nNames: " + namesString
                         reply(msg)
                     elif text=='/testWeeklyMessage':
