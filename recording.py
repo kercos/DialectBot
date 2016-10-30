@@ -17,9 +17,9 @@ import time_util
 import sys
 import utility
 
-REC_ARROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
-REC_ARROVED_STATE_TRUE = 'TRUE' #submitted
-REC_ARROVED_STATE_FALSE = 'FALSE' #submitted and closed
+REC_APPROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
+REC_APPROVED_STATE_TRUE = 'TRUE' #submitted
+REC_APPROVED_STATE_FALSE = 'FALSE' #submitted and closed
 
 
 class Recording(ndb.Model):
@@ -30,7 +30,7 @@ class Recording(ndb.Model):
     url = ndb.StringProperty()
     random_id = ndb.FloatProperty()
     translation = ndb.StringProperty()
-    approved = ndb.StringProperty(default=REC_ARROVED_STATE_IN_PROGRESS)
+    approved = ndb.StringProperty(default=REC_APPROVED_STATE_IN_PROGRESS)
     location_approx_det_0 = ndb.StringProperty()  # 5 degree ~ 550Km
     location_approx_det_1 = ndb.StringProperty()  # 2 degree ~ 220Km
     location_approx_det_2 = ndb.StringProperty()  # 1 degree ~ 110Km
@@ -92,9 +92,9 @@ def addTranslation(file_id, translation):
 
 def getRandomRecording():
     r = random.random()
-    random_entry = Recording.query(Recording.random_id>r).order(Recording.random_id).get()
+    random_entry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.random_id>r).order(Recording.random_id).get()
     if not random_entry:
-        random_entry = Recording.query(Recording.random_id<r).order(-Recording.random_id).get()
+        random_entry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.random_id<r).order(-Recording.random_id).get()
     if random_entry:
         logging.debug("Random number: " + str(r) + " Selected random id: " + str(random_entry.random_id))
     return random_entry
@@ -103,19 +103,19 @@ def getClosestRecording(lat, lon, clusterSizeKm=50):
     import geoUtils
     approxLocs = getApproxLocations(lat,lon)
     level = 4
-    qry = Recording.query(Recording.location_approx_det_4==approxLocs[4])
+    qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_4==approxLocs[4])
     if qry.count()==0:
         level = 3
-        qry = Recording.query(Recording.location_approx_det_3==approxLocs[3])
+        qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_3==approxLocs[3])
         if qry.count()==0:
             level = 2
-            qry = Recording.query(Recording.location_approx_det_2==approxLocs[2])
+            qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_2==approxLocs[2])
             if qry.count()==0:
                 level = 1
-                qry = Recording.query(Recording.location_approx_det_1==approxLocs[1])
+                qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_1==approxLocs[1])
                 if qry.count()==0:
                     level = 0
-                    qry = Recording.query(Recording.location_approx_det_0==approxLocs[0])
+                    qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_0==approxLocs[0])
 
     if qry.count()==0:
         return None
@@ -231,7 +231,7 @@ def setAllRecApproved():
     listOfRecEntities = []
     count = 0
     for rec in Recording.query():
-        rec.approved = REC_ARROVED_STATE_TRUE
+        rec.approved = REC_APPROVED_STATE_TRUE
         listOfRecEntities.append(rec)
         count += 1
         if count % 10 == 0:
@@ -240,7 +240,7 @@ def setAllRecApproved():
 
 def getInfoApproved():
     totalCount = Recording.query().count()
-    totalApproved = Recording.query(Recording.approved==REC_ARROVED_STATE_TRUE).count()
+    totalApproved = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE).count()
     print "Total count: " + str(totalCount)
     print "Approved: " + str(totalApproved)
 
@@ -318,7 +318,7 @@ def createGeoJsonElement(rec, addRandomCoordNoise=True):
 
 def createAudioGeoJsonStructure():
     structure = []
-    qry = Recording.query(Recording.file_id != None, Recording.approved == REC_ARROVED_STATE_TRUE)
+    qry = Recording.query(Recording.file_id != None, Recording.approved == REC_APPROVED_STATE_TRUE)
     for rec in qry:
         element = createGeoJsonElement(rec, addRandomCoordNoise=ADD_RANDOM_NOISE_TO_COORDINATES)
         structure.append(element)

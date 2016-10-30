@@ -5,42 +5,54 @@ from geopy.exc import GeocoderTimedOut
 from geopy.exc import GeocoderServiceError
 import math
 import key
-import googlemaps
 import logging
-import urllib
+import requests
 import jsonUtil
 
 #https://raw.githubusercontent.com/dakk/Italia.json/master/italia_comuni.json
 
-GEOLOCATOR = Nominatim()
-#GEOLOCATOR = GoogleV3(key.GOOGLE_API_KEY)
+GEOLOCATOR_1 = Nominatim()
+GEOLOCATOR_2 = GoogleV3(key.GOOGLE_API_KEY)
 
 def getLocationFromName(locationName):
     try:
-        #location = GEOLOCATOR.geocode(locationName, timeout=10, exactly_one=True, language='it', region='it') #default one answer for Nominatim (not google)
-        location = GEOLOCATOR.geocode(locationName, timeout=10, exactly_one=True, language='it')  # default one answer for Nominatim (not google)
-        return location
+        for g in [GEOLOCATOR_1, GEOLOCATOR_2]:
+            location = g.geocode(
+                #locationName, timeout=10, exactly_one=True, language='it', region='it') #default one answer for Nominatim (not google)
+                locationName, timeout=10, exactly_one=True, language='it')  # default one answer for Nominatim (not google)
+            if location :
+                return location
     except GeocoderServiceError:
-        logging.error('GeocoderServiceError occored')
+        logging.error('GeocoderServiceError occurred')
 
-
-def getAddressFromPosition(lat, lon):
+'''
+def getLocationFromPosition(lat, lon):
     try:
-        location = GEOLOCATOR.reverse((lat, lon), timeout=10, exactly_one=True, language='it') #default one answer for Nominatim (not google)
-        return location.address.encode('utf-8')
+        for g in [GEOLOCATOR_1, GEOLOCATOR_2]:
+            location = g.reverse((lat, lon), timeout=10, exactly_one=True, language='it')  # default one answer for Nominatim (not google)
+            if location :
+                return location
     except GeocoderServiceError:
-        logging.error('GeocoderServiceError occored')
+        logging.error('GeocoderServiceError occurred')
+'''
 
-# see http://maps.googleapis.com/maps/api/geocode/json?language=it&latlng=46.0682115,11.1221167665254&sensor=true
+# see https://developers.google.com/maps/documentation/geocoding/intro
+# e.g., http://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&latlng=46.0682115,11.1221167665254
+# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&latlng=46.069141,11.152745&key=AIzaSyCjmN2mmOviJXuJishwacbc-q4FQwYiFro
+# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&address=via del roro, 6A, 38052, Caldonazzo, TN&key=AIzaSyCjmN2mmOviJXuJishwacbc-q4FQwYiFro
+googleapis_url = "https://maps.googleapis.com/maps/api/geocode/json?"
+
 def getComuneProvinciaFromCoordinates(lat, lon):
-    url = "https://maps.googleapis.com/maps/api/geocode/json?" \
-          "language=it&latlng={},{}&sensor=true&key={}".format(lat,lon,key.GOOGLE_API_KEY)
-    #logging.debug(url)
-    response = urllib.urlopen(url)
-    emojiTagsDict = jsonUtil.json_loads_byteified(response.read())
-    #logging.debug(str(emojiTagsDict))
-    if emojiTagsDict['status']=='OK':
-        results = emojiTagsDict['results']
+    params = {
+        'language': 'it',
+        'latlng': '{},{}'.format(lat,lon),
+        'key': key.GOOGLE_API_KEY
+    }
+    resp = requests.get(googleapis_url, params=params)
+    #logging.info('Response: {}'.format(resp.text)) #this might generate a UnicodeEncodeError: 'ascii' codec can't encode character u'\xe0' in position 607: ordinal not in range(128)
+    responseJson = jsonUtil.json_loads_byteified(resp.text)
+    if responseJson['status']=='OK':
+        results = responseJson['results']
         for result_item in results:
             address_components = result_item['address_components']
             comune_field = [x for x in address_components if x['types']==[ "administrative_area_level_3", "political" ]]
@@ -50,8 +62,10 @@ def getComuneProvinciaFromCoordinates(lat, lon):
             if comune and provincia:
                 return "{}, {}".format(comune, provincia)
         #return provincia
+    #raise LookupError('Problem finding comune and provincia from coordinates {} {}'.format(lat, lon))
     logging.debug("No comune found for {} {}".format(lat, lon))
-    raise LookupError
+    return None
+
 
 def distance(point1, point2):
     #point1 = (41.49008, -71.312796)
@@ -62,7 +76,7 @@ def distance(point1, point2):
 def getLocationTest():
     #location = GEOLOCATOR.geocode("175 5th Avenue NYC") #default one answer for Nominatim (not google)
     #location = GEOLOCATOR.geocode("via garibaldi", exactly_one=False)
-    location = GEOLOCATOR.reverse("52.509669, 13.376294", exactly_one=True, language='it')
+    location = GEOLOCATOR_1.reverse("52.509669, 13.376294", exactly_one=True, language='it')
     #address = location.address
     return location
 

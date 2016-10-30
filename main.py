@@ -101,7 +101,7 @@ Hai tre modi per inserire il luogo del dialetto che vuoi registrare:
 🖊 *Scrivi* qua sotto il *nome del luogo* di cui vuoi inserire una registrazione (ad esempio Roma), oppure...
 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
       🔹 premi la graffetta (📎 ) in basso e premi su "Posizione"
-      🔹 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
+      🔹 seleziona e invia una posizione dalla mappa.
 
 """
 
@@ -111,7 +111,7 @@ Hai due modi per indovinare il luogo della registrazione:
 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
       📎 premi la graffetta in basso e premi su "Posizione"
-      📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
+      📍 seleziona e invia una posizione dalla mappa.
 """
 
 ISTRUZIONI_POSIZIONE_SEARCH = \
@@ -120,7 +120,7 @@ Hai due modi per cercare le registrazioni vicino ad un determinato luogo:
 🖊 *Scrivi* qua sotto il *nome del luogo* (ad esempio 'Palermo'), oppure...
 🌍 *Seleziona una posizione nella mappa* seguendo le seguenti istruzioni:
       📎 premi la graffetta in basso e premi su "Posizione"
-      📍 seleziona e invia una posizione dalla mappa (sii più preciso/a possibile).
+      📍 seleziona e invia una posizione dalla mappa.
 """
 
 MESSAGE_FOR_FRIENDS = \
@@ -297,7 +297,7 @@ def broadcast(sender_chat_id, msg, restart_user=False, curs=None, enabledCount =
 
 def getRecentRecordings(p):
     recordings = ''
-    qry = Recording.query(Recording.approved == recording.REC_ARROVED_STATE_TRUE).order(-Recording.date_time).fetch(8)
+    qry = Recording.query(Recording.approved == recording.REC_APPROVED_STATE_TRUE).order(-Recording.date_time).fetch(8)
     for r in qry:
         name = person.getPersonByChatId(r.chat_id).name.encode('utf-8')
         recordings += '/rec_' + str(r.key.id()) + ' - ' + name + ' - ' + str(r.date_time.date()) + '\n'
@@ -322,7 +322,7 @@ def getLastContibutors(daysAgo):
     names = set()
     recsCommands = []
     count = 0
-    recs = Recording.query(Recording.date_time > dateThreshold, Recording.approved==recording.REC_ARROVED_STATE_TRUE).fetch()
+    recs = Recording.query(Recording.date_time > dateThreshold, Recording.approved == recording.REC_APPROVED_STATE_TRUE).fetch()
     for r in recs:
         if r.chat_id<=0:
             continue
@@ -521,16 +521,16 @@ def format_distance(dst):
 def format_and_comment_distance(dst):
     fmt_dst = format_distance(dst)
     if (dst>=500):
-        return fmt_dst + ". Sei molto lontano!"
+        return fmt_dst + ". Sei molto lontano! 😜"
     if (dst>=250):
-        return fmt_dst + ". Puoi fare di meglio!"
+        return fmt_dst + ". Puoi fare di meglio! 😉"
     if (dst>=100):
-        return fmt_dst + ". Non male!"
+        return fmt_dst + ". Non male! 🤔"
     if (dst>=50):
-        return fmt_dst + ". Brava/o ci sei andata/o molto vicino!"
+        return fmt_dst + ". Brava/o ci sei andata/o molto vicino! 😄"
     if (dst>=15):
-        return fmt_dst + ". Bravissima/o hai indovinato!"
-    return fmt_dst + ". Wow, Strepitoso"
+        return fmt_dst + ". Bravissima/o! 👍😄"
+    return fmt_dst + ". Wow, Strepitoso! 🎉🎉👍😄🎉🎉"
 
 
 # ================================
@@ -623,13 +623,19 @@ def dealWithGuessedLocation(p,guessed_loc):
 
 def dealWithPlaceAndMicInstructions(p):
     luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(p.location.lat, p.location.lon) + '*'
+    if luogo==None:
+        tell(p.chat_id, "Il luogo inserito non è stato riconosciuto, riprova.")
+        logging.debug('Problem finding comune and provincia from coordinates {} {}'.format(lat_gold, lon_gold))
     instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
     tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
     person.setState(p, 20)
 
 def dealWithFindClosestRecording(p, location):
-    rec = recording.getClosestRecording(location['latitude'], location['longitude'])
+    lat = location['latitude']
+    lon = location['longitude']
+    rec = recording.getClosestRecording(lat, lon)
     if rec:
+        logging.debug('Found recording id={} for location=({},{})'.format(rec.key.id(), lat, lon))
         tell(p.chat_id, "Trovata la seguente registrazione: ")
         sendRecording(p.chat_id, rec)
         sendLocation(p.chat_id, rec.location.lat, rec.location.lon)
@@ -821,7 +827,7 @@ def goToState91(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     giveInstruction = input is None
     if giveInstruction:
-        rec = Recording.query(Recording.approved == recording.REC_ARROVED_STATE_IN_PROGRESS).get()
+        rec = Recording.query(Recording.approved == recording.REC_APPROVED_STATE_IN_PROGRESS).get()
         if rec:
             p.setLast_recording_file_id(rec.file_id)
             sendVoiceLocationTranslation(p, rec, userInfo=True)
@@ -840,7 +846,7 @@ def goToState91(p, **kwargs):
             rec = recording.getRecording(p.last_recording_file_id)
             tell(rec.chat_id, USER_MSG.format('', str(rec.key.id())), markdown=False)
             tell(p.chat_id, "Registrazione approvata!")
-            rec.approve(recording.REC_ARROVED_STATE_TRUE)
+            rec.approve(recording.REC_APPROVED_STATE_TRUE)
             recording.appendRecordingInGeoJsonStructure(rec)
             sleep(2)
             repeatState(p)
@@ -849,7 +855,7 @@ def goToState91(p, **kwargs):
             tell(rec.chat_id, USER_MSG.format(' NON ', str(rec.key.id())), markdown=False)
             tell(p.chat_id, "Registrazione NON approvata! "
                             "Se vuoi mandare maggiori info scrivi /sendText {0} text".format(str(rec.chat_id)))
-            rec.approve(recording.REC_ARROVED_STATE_FALSE)
+            rec.approve(recording.REC_APPROVED_STATE_FALSE)
             sleep(2)
             repeatState(p)
         elif input == BOTTONE_INDIETRO:
@@ -1038,11 +1044,13 @@ class WebhookHandler(webapp2.RequestHandler):
                 elif location!=None:
                     luogo = geoUtils.getComuneProvinciaFromCoordinates(location['latitude'], location['longitude'])
                     if luogo:
-                        person.setLocation(p,location['latitude'], location['longitude'])
+                        person.setLocation(p, location['latitude'], location['longitude'])
                         dealWithPlaceAndMicInstructions(p)
                     else:
                         reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
                               ISTRUZIONI_POSIZIONE, kb=[[BOTTONE_INVIA_LOCATION], [BOTTONE_ANNULLA]])
+                        logging.debug('Problem finding comune and provincia from coordinates {} {}'.format(
+                            location['latitude'], location['longitude']))
                     #state 20
                 elif text.startswith('('):
                     text_split = text[1:-1].split(",")
@@ -1203,7 +1211,7 @@ class WebhookHandler(webapp2.RequestHandler):
 
     def handle_exception(self, exception, debug_mode):
         logging.exception(exception)
-        tell(key.FEDE_CHAT_ID, "❗ Detected Exception: " + str(exception))
+        tell(key.FEDE_CHAT_ID, "❗ Detected Exception: " + str(exception), markdown=False)
 
 
 app = webapp2.WSGIApplication([
