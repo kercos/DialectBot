@@ -622,10 +622,12 @@ def dealWithGuessedLocation(p,guessed_loc):
     sendTranslation(p.chat_id, rec)
 
 def dealWithPlaceAndMicInstructions(p):
-    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(p.location.lat, p.location.lon) + '*'
+    lat, lon = p.location.lat, p.location.lon
+    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(lat, lon) + '*'
     if luogo==None:
         tell(p.chat_id, "Il luogo inserito non è stato riconosciuto, riprova.")
-        logging.debug('Problem finding comune and provincia from coordinates {} {}'.format(lat_gold, lon_gold))
+        tell(key.FEDE_CHAT_ID, "A user inserted a unrecognized location: {},{}".format(lat, lon))
+        sendLocation(key.FEDE_CHAT_ID, lat, lon)
     instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
     tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
     person.setState(p, 20)
