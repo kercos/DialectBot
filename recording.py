@@ -347,3 +347,18 @@ def getAudioGeoJsonStructure():
         "type": "FeatureCollection",
         "features": structure
     }
+
+def getRecordingCounts(onlyCrowdsourced = True):
+    if onlyCrowdsourced:
+        return Recording.query(Recording.url == None).count()
+    else:
+        return Recording.query().count()
+
+def getRecordingNames():
+    recs =  Recording.query(Recording.url == None).fetch()
+    chat_id_set = set([r.chat_id for r in recs])
+    names = []
+    for id in chat_id_set:
+        p = person.getPersonByChatId(id)
+        names.append(p.getFirstName())
+    return ', '.join(names)
