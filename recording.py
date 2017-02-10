@@ -11,6 +11,7 @@ import random
 import json
 import os
 
+from geo import geomodel, geotypes
 import key
 import person
 import time_util
@@ -21,21 +22,15 @@ REC_APPROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
 REC_APPROVED_STATE_TRUE = 'TRUE' #submitted
 REC_APPROVED_STATE_FALSE = 'FALSE' #submitted and closed
 
-
-class Recording(ndb.Model):
+class Recording(geomodel.GeoModel, ndb.Model):
+    # location = ndb.GeoPtProperty() # inherited from geomodel.GeoModel
     chat_id = ndb.IntegerProperty()
-    location = ndb.GeoPtProperty()
     date_time = ndb.DateTimeProperty()
     file_id = ndb.StringProperty()
     url = ndb.StringProperty()
     random_id = ndb.FloatProperty()
     translation = ndb.StringProperty()
     approved = ndb.StringProperty(default=REC_APPROVED_STATE_IN_PROGRESS)
-    location_approx_det_0 = ndb.StringProperty()  # 5 degree ~ 550Km
-    location_approx_det_1 = ndb.StringProperty()  # 2 degree ~ 220Km
-    location_approx_det_2 = ndb.StringProperty()  # 1 degree ~ 110Km
-    location_approx_det_3 = ndb.StringProperty()  # 0.5 degrees ~ 55Km
-    location_approx_det_4 = ndb.StringProperty()  # 0.1 degrees ~ 11Km
 
     def approve(self, value):
         self.approved = value
@@ -47,26 +42,11 @@ class Recording(ndb.Model):
             result = utility.escapeMarkdown(result)
         return result
 
-def deleteLocationApprox():
-    qry = Recording.query()
-    for rec in qry:
-        for prop in ['location_approx_0', 'location_approx_05', 'location_approx_1', 'location_approx_15', 'location_approx_2']:
-            if prop in rec._properties:
-                del rec._properties[prop]
-        rec.put()
-
-
 def addRecording(person, file_id):
-    approxLocs = getApproxLocations(person.location.lat,person.location.lon)
+    #approxLocs = getApproxLocations(person.location.lat,person.location.lon)
     r = Recording()
     r.populate(chat_id=person.chat_id, location = person.location,
-               date_time=time_util.now(), file_id=file_id, random_id = random.random(),
-               location_approx_det_0=approxLocs[0],
-               location_approx_det_1=approxLocs[1],
-               location_approx_det_2=approxLocs[2],
-               location_approx_det_3=approxLocs[3],
-               location_approx_det_4=approxLocs[4],
-               )
+               date_time=time_util.now(), file_id=file_id, random_id = random.random())
     r.put()
     return r
 
@@ -92,50 +72,50 @@ def addTranslation(file_id, translation):
 
 def getRandomRecording():
     r = random.random()
-    random_entry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.random_id>r).order(Recording.random_id).get()
+    random_entry = Recording.query(
+        Recording.approved == REC_APPROVED_STATE_TRUE,
+        Recording.random_id>r,
+        #Recording.file_id!=None
+    ).order(Recording.random_id).get()
     if not random_entry:
-        random_entry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.random_id<r).order(-Recording.random_id).get()
+        random_entry = Recording.query(
+            Recording.approved == REC_APPROVED_STATE_TRUE,
+            Recording.random_id<r,
+            #Recording.file_id != None
+        ).order(-Recording.random_id).get()
     if random_entry:
         logging.debug("Random number: " + str(r) + " Selected random id: " + str(random_entry.random_id))
     return random_entry
 
-def getClosestRecording(lat, lon, clusterSizeKm=50):
+def getClosestRecording(lat, lon, search_radius, random_radius):
     import geoUtils
-    approxLocs = getApproxLocations(lat,lon)
-    level = 4
-    qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_4==approxLocs[4])
-    if qry.count()==0:
-        level = 3
-        qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_3==approxLocs[3])
-        if qry.count()==0:
-            level = 2
-            qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_2==approxLocs[2])
-            if qry.count()==0:
-                level = 1
-                qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_1==approxLocs[1])
-                if qry.count()==0:
-                    level = 0
-                    qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE, Recording.location_approx_det_0==approxLocs[0])
 
-    if qry.count()==0:
+    qry = Recording.query(Recording.approved == REC_APPROVED_STATE_TRUE)
+    latMin, lonMin, latMax, lonMax = geoUtils.getBoxCoordinates(lat, lon, search_radius)
+    logging.debug("Lat={}, Lon={}, radius={}, latMin={}, lonMin={}, latMax={}, lonMax={}".format(
+        lat, lon, search_radius, latMin, lonMin, latMax, lonMax))
+    box = geotypes.Box(latMax, lonMax, latMin, lonMin)  # north, east, south, west
+
+    recs = Recording.bounding_box_fetch(qry, box)
+    num_results = len(recs)
+
+    if num_results==0:
         return None
-    logging.debug("Level: " + str(level) + " Qry size: " + str(qry.count()))
-    if qry.count()==1:
-        return qry.get()
+    if num_results==1:
+        return recs[0]
     else:
         minDstRecs = []
         minDst = sys.maxint
         for r in qry:
             dst = geoUtils.distance((lat,lon),(r.location.lat, r.location.lon))
-            if dst<(minDst-clusterSizeKm):
+            if dst<(minDst-random_radius):
                 minDst = dst
                 minDstRecs = [r]
-            elif dst<(minDst+clusterSizeKm):
+            elif dst<(minDst+random_radius):
                 minDstRecs.append(r)
         size = len(minDstRecs)
         randomIndx = int(size*random.random())
         return minDstRecs[randomIndx]
-
 
 def testVivaldi():
     file = open("vivaldi/citiesGPS.tsv")
@@ -153,34 +133,6 @@ def removeFormatVoice():
             rec.put()
             count+=1
     return count
-
-def getApproxLocations(lat, lon):
-    return [
-        getApproxLocationSingle(lat, lon, 0, 5),     # 5 degree ~ 550Km
-        getApproxLocationSingle(lat, lon, 0, 2),     # 2 degree ~ 220Km
-        getApproxLocationSingle(lat, lon, 0),        # 1 degree ~ 110Km
-        getApproxLocationSingle(lat, lon, 1, 5),     # 0.5 degrees ~ 55Km
-        getApproxLocationSingle(lat, lon, 1),        # 0.1 degrees ~ 11Km
-    ]
-
-def getApproxLocationSingle(lat, lon, roundIndex, base=None):
-    if base:
-        return str(base*round(lat/base,roundIndex)) + ',' + str(base*round(lon/base,roundIndex))
-    else:
-        return str(round(lat,roundIndex)) + ',' + str(round(lon,roundIndex))
-
-def initializeApproxLocations():
-    qry = Recording.query()
-    for r in qry:
-        loc = r.location
-        approxLocs = getApproxLocations(loc.lat,loc.lon)
-        r.location_approx_det_0 = approxLocs[0]  # 5 degree ~ 550Km
-        r.location_approx_det_1 = approxLocs[1]  # 2 degree ~ 220Km
-        r.location_approx_det_2 = approxLocs[2]  # 1 degree ~ 110Km
-        r.location_approx_det_3 = approxLocs[3]  # 0.5 degrees ~ 55Km
-        r.location_approx_det_4 = approxLocs[4]  # 0.1 degrees ~ 11Km
-        r.put()
-    logging.info("Finished initializing approx locations")
 
 def deleteVivaldi():
     ndb.delete_multi(
@@ -362,3 +314,20 @@ def getRecordingNames():
         p = person.getPersonByChatId(id)
         names.append(p.getFirstName())
     return ', '.join(names)
+
+def updateAllRecordings():
+    recs = Recording.query().fetch()
+    for r in recs:
+        #r.update_location()
+        for prop in ['location_approx_det_0', 'location_approx_det_1', 'location_approx_det_2', 'location_approx_det_3', 'location_approx_det_4']:
+            if prop in r._properties:
+                del r._properties[prop]
+    create_futures = ndb.put_multi_async(recs)
+    ndb.Future.wait_all(create_futures)
+
+def updateVivaldi():
+    recs  = Recording.query(Recording.chat_id==0).fetch()
+    for r in recs:
+        r.url = r.url.replace('.OGG','.ogg')
+    create_futures = ndb.put_multi_async(recs)
+    ndb.Future.wait_all(create_futures)

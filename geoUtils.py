@@ -8,6 +8,7 @@ import key
 import logging
 import requests
 import jsonUtil
+from geoLocation import GeoLocation
 
 #https://raw.githubusercontent.com/dakk/Italia.json/master/italia_comuni.json
 
@@ -35,6 +36,17 @@ def getLocationFromPosition(lat, lon):
     except GeocoderServiceError:
         logging.error('GeocoderServiceError occurred')
 '''
+
+def getBoxCoordinates(lat, lon, radius):
+    loc = GeoLocation.from_degrees(lat, lon)
+    boxMinMaxCorners = loc.bounding_locations(radius)
+    boxMinCorners = boxMinMaxCorners[0]
+    boxMaxCorners = boxMinMaxCorners[1]
+    latMin = boxMinCorners.deg_lat
+    lonMin = boxMinCorners.deg_lon
+    latMax = boxMaxCorners.deg_lat
+    lonMax = boxMaxCorners.deg_lon
+    return latMin, lonMin, latMax, lonMax
 
 # see https://developers.google.com/maps/documentation/geocoding/intro
 # e.g., http://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&latlng=46.0682115,11.1221167665254

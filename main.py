@@ -138,7 +138,6 @@ STATES = {
     20: 'Registra',
     21: 'Confirm recording',
     22: 'Ask for transcription',
-    23: 'Deal with transcription answer',
     30: 'Ascolta',
     31: 'Indovina Luogo',
     32: 'Ricerca Luogo',
@@ -636,7 +635,15 @@ def dealWithPlaceAndMicInstructions(p):
 def dealWithFindClosestRecording(p, location):
     lat = location['latitude']
     lon = location['longitude']
-    rec = recording.getClosestRecording(lat, lon)
+
+    SEARCH_RADIUS_RANDOM_RADIUS = [(10,5),(25,10),(50,20)]
+
+    rec = None
+    for r1, r2 in SEARCH_RADIUS_RANDOM_RADIUS:
+        rec = recording.getClosestRecording(lat, lon, r1, r2)
+        if rec is not None:
+            break
+
     if rec:
         logging.debug('Found recording id={} for location=({},{})'.format(rec.key.id(), lat, lon))
         tell(p.chat_id, "Trovata la seguente registrazione: ")
@@ -1026,11 +1033,6 @@ class WebhookHandler(webapp2.RequestHandler):
                     elif text == '/deleteVivaldi':
                         recording.deleteVivaldi()
                         reply('Deleted Vivaldi recs.')
-                    elif text == '/deleteApproxLoc':
-                        recording.deleteLocationApprox()
-                    elif text == '/initApproxLoc':
-                        recording.initializeApproxLocations()
-                        reply('Reinitialized approx locations. ')
                     elif text == '/remFormatVoice':
                         c = recording.removeFormatVoice()
                         reply("removed rec format voice: " + str(c))
@@ -1129,10 +1131,15 @@ class WebhookHandler(webapp2.RequestHandler):
                     restart(p, "Operazione annullata.")
                     # state = -1
                 elif text == 'OK':
-                    reply("Riteniamo utile avere una spiegazione in italiano delle registrazione "
-                          "in modo da essere comprensibili da tutti gli utenti. "
-                          "Potresti lasciare una spiegazione della tua registrazione? ",
-                          kb=[['SI','NO']])
+                    msg = utility.unindent(
+                        '''
+                        Riteniamo utile avere una traduzione in italiano delle registrazione \
+                        in modo da essere comprensibili da tutti gli utenti.\n
+                        *Scrivi qua sotto* la traduzione della registrazione \
+                        (in aggiunta puoi inserire la trascrizione in dialetto e il significato in caso si tratti di un proverbio)
+                        '''
+                    )
+                    reply(msg, kb=[['Salta Traduzione']])
                     person.setState(p, 22)
                 elif text == 'REGISTRA DI NUOVO':
                     person.removeLastRecording(p)
@@ -1142,30 +1149,23 @@ class WebhookHandler(webapp2.RequestHandler):
                     reply(FROWNING_FACE + "Scusa non capisco quello che hai detto, premi *OK* per confermare la registrazione.")
             elif p.state == 22:
                 # CHECK IF AVAILABLE FOR TRANSLATION
-                if text == 'SI':
-                    reply("*Scrivi* qua sotto la traduzione in italiano della registrazione  "
-                          "(in aggiunta puoi inserire la trascrizione in dialetto e il significato in caso si tratti di un proverbio)",
-                          kb=[[BOTTONE_ANNULLA]])
-                    person.setState(p, 23)
-                elif text == 'NO':
-                    reply("Grazie per il tuo contributo!")
+                if text == 'Salta Traduzione':
+                    msg = "👍😀 Grazie per il tuo contributo!\n" \
+                          "La registrazione è in attesa di approvazione, riceverai un messaggio a breve."
+                    reply(msg)
                     sendNewRecordingNotice(p)
                     restart(p)
-                else:
-                    reply(FROWNING_FACE + "Premi *SI* e poi inserisci il testo!")
-            elif p.state == 23:
-                if text == '':
-                    reply("Input non valido. *Scrivi* qua sotto la traduzione in italiano della registrazione",
-                          kb=[[BOTTONE_ANNULLA]])
+                elif text == '':
+                    msg = "Input non valido. *Scrivi* qua sotto la traduzione in italiano della registrazione"
+                    reply(msg, kb=[['Salta Traduzione']])
                     return
-                elif text == BOTTONE_ANNULLA:
-                    text = ''
-                # INSERT TRANSLATION
-                recording.addTranslation(p.last_recording_file_id, text)
-                reply("Grazie per il tuo contributo! "
-                      "La registrazione è in attesa di approvazione, riceverai un messaggio a breve.")
-                sendNewRecordingNotice(p)
-                restart(p)
+                else:
+                    recording.addTranslation(p.last_recording_file_id, text)
+                    msg = "👍😀 Grazie per il tuo contributo!\n" \
+                          "La registrazione è in attesa di approvazione, riceverai un messaggio a breve."
+                    reply(msg)
+                    sendNewRecordingNotice(p)
+                    restart(p)
             elif p.state == 30:
                 if text == BOTTONE_INDIETRO:
                     restart(p)
@@ -1205,6 +1205,7 @@ class WebhookHandler(webapp2.RequestHandler):
                               ISTRUZIONI_POSIZIONE_GUESS, kb = [[BOTTONE_ANNULLA]])
             elif p.state == 32:
                 #ASCOLTA - RICERCA LUOGO
+                sendWaitingAction(p.chat_id)
                 if location!=None:
                     dealWithFindClosestRecording(p, location)
                 elif text == BOTTONE_INDIETRO:

@@ -1,5 +1,5 @@
 application: dialectbot
-version: 1
+version: 2
 runtime: python27
 api_version: 1
 threadsafe: false
@@ -36,16 +36,6 @@ handlers:
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin
-
-#- url: /_ah/channel/connected/
-#  script: com.pickmeup-telegram.server.channel.ChannelConnected
-#  name: ChannelConnected
-#  script: main.app
-
-#- url: /_ah/channel/disconnected/
-#  script: com.pickmeup-telegram.server.channel.ChannelDisconnected
-#  name: ChannelDisconnected
-#  script: main.app
 
 - url: /vivaldi
   static_dir: vivaldi
