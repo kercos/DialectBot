@@ -623,14 +623,16 @@ def dealWithGuessedLocation(p,guessed_loc):
 
 def dealWithPlaceAndMicInstructions(p):
     lat, lon = p.location.lat, p.location.lon
-    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(lat, lon) + '*'
+    luogo = geoUtils.getComuneProvinciaFromCoordinates(lat, lon)
     if luogo==None:
         tell(p.chat_id, "Il luogo inserito non è stato riconosciuto, riprova.")
         tell(key.FEDE_CHAT_ID, "A user inserted a unrecognized location: {},{}".format(lat, lon))
         sendLocation(key.FEDE_CHAT_ID, lat, lon)
-    instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
-    tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
-    person.setState(p, 20)
+    else:
+        luogo = '*{}*'.format(luogo)
+        instructions = PLACE_INSTRUCTIONS.format(luogo) + MIC_INSTRUCTIONS
+        tell(p.chat_id, instructions, kb=[[BOTTONE_CAMBIA_LUOGO],[BOTTONE_INDIETRO]])
+        person.setState(p, 20)
 
 def dealWithFindClosestRecording(p, location):
     lat = location['latitude']
