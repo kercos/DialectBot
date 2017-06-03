@@ -728,7 +728,7 @@ class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
 def getWeeklyMessage():
     people_count = getInfoCount()
     contr_count, contr_namesString, recCommandsString = getLastContibutors(7)
-    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n"
+    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n\n"
     if contr_count > 0:
         if contr_count == 1:
             msg += utility.unindent(
@@ -749,7 +749,7 @@ def getWeeklyMessage():
     else:
         msg += "Purtroppo questa settimana non abbiamo ricevuto nessuna nuova registrazione " + FROWNING_FACE
 
-    msg += "\nSe vai sul sito http://dialectbot.appspot.com potrai " \
+    msg += "\n\nSul sito http://dialectbot.appspot.com potrai " \
            "*visualizzare* (e *ascoltare*) tutte le registrazioni sulla *mappa* 🗺 !"
 
     msg += "\n\n*Aiutaci a crescere*: aggiungi nuove registrazioni del tuo dialetto tramite il bot " \
