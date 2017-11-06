@@ -1,7 +1,7 @@
 #https://cloud.google.com/appengine/docs/python/config/cron?hl=en
 
 cron:
-- description: info user weekly for all
-  url: /infouser_weekly_all
-  schedule: every saturday 18:30
+- description: info user monthly for all
+  url: /infouser_monthly_all
+  schedule: every 1st sunday of month 11:00
   timezone: Europe/Rome

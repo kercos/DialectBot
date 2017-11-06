@@ -21,11 +21,13 @@ indexes:
   properties:
   - name: approved
   - name: file_id
+    direction: desc
 
 - kind: Recording
   properties:
   - name: approved
   - name: random_id
+    direction: desc
 
 # This index.yaml is automatically updated whenever the dev_appserver
 # detects that a new type of query is run.  If you want to manage the

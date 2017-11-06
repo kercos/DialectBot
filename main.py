@@ -719,7 +719,7 @@ class RedirectMappa(webapp2.RequestHandler):
     def get(self):
         self.redirect("http://dialectbot.appspot.com/audiomap/mappa.html")
 
-class InfoAllUsersWeeklyHandler(webapp2.RequestHandler):
+class InfoAllUsersMonthlyHandler(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
         msg = getWeeklyMessage()
@@ -733,7 +733,7 @@ def getWeeklyMessage():
         if contr_count == 1:
             msg += utility.unindent(
                 """
-                Nell'ultima settimana abbiamo ricevuto una registrazione!
+                Nell'ultimo mese abbiamo ricevuto una registrazione!
                 Un grande ringraziamento a *{}*! {}\n
                 Se vuoi ascoltarla premi su questo comando:\n{}
                 """.format(contr_namesString, CLAPPING_HANDS, recCommandsString)
@@ -741,13 +741,13 @@ def getWeeklyMessage():
         else:
             msg += utility.unindent(
                 """
-                Nell'ultima settimana abbiamo ricevuto {} registrazioni!
+                Nell'ultimo mese abbiamo ricevuto {} registrazioni!
                 Un grande ringraziamento a *{}*! {}\n
                 Se vuoi ascoltarle premi su questi comandi:\n{}
                 """.format(contr_count, contr_namesString, CLAPPING_HANDS*contr_count, recCommandsString)
             )
     else:
-        msg += "Purtroppo questa settimana non abbiamo ricevuto nessuna nuova registrazione " + FROWNING_FACE
+        msg += "Purtroppo questo mese non abbiamo ricevuto nessuna nuova registrazione " + FROWNING_FACE
 
     msg += "\n\nSul sito http://dialectbot.appspot.com potrai " \
            "*visualizzare* (e *ascoltare*) tutte le registrazioni sulla *mappa* 🗺 !"
@@ -1241,7 +1241,7 @@ app = webapp2.WSGIApplication([
     ('/me', MeHandler),
 #    ('/_ah/channel/connected/', DashboardConnectedHandler),
 #    ('/_ah/channel/disconnected/', DashboardDisconnectedHandler),
-    ('/infouser_weekly_all', InfoAllUsersWeeklyHandler),
+    ('/infouser_monthly_all', InfoAllUsersMonthlyHandler),
     ('/set_webhook', SetWebhookHandler),
     ('/get_webhook_info', GetWebhookInfo),
     ('/delete_webhook', DeleteWebhook),

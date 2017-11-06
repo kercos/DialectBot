@@ -236,6 +236,7 @@ class DownloadRecordingHandler(webapp2.RequestHandler):
 class ServeDynamicAudioGeoJsonFileHandler(webapp2.RequestHandler):
     def get(self):
         geoJsonStructure = getAudioGeoJsonStructure()
+        self.response.headers.add_header("Access-Control-Allow-Origin", "*")
         self.response.write(json.dumps(geoJsonStructure, indent=4))
 
 ADD_RANDOM_NOISE_TO_COORDINATES = True
