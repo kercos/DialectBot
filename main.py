@@ -722,12 +722,12 @@ class RedirectMappa(webapp2.RequestHandler):
 class InfoAllUsersMonthlyHandler(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
-        msg = getWeeklyMessage()
+        msg = getMonthlyMessage()
         broadcast(key.FEDE_CHAT_ID, msg, restart_user=True)
 
-def getWeeklyMessage():
+def getMonthlyMessage():
     people_count = getInfoCount()
-    contr_count, contr_namesString, recCommandsString = getLastContibutors(7)
+    contr_count, contr_namesString, recCommandsString = getLastContibutors(30)
     msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n\n"
     if contr_count > 0:
         if contr_count == 1:
@@ -909,7 +909,7 @@ def dealWithsendTextCommand(p, sendTextCommand, markdown=False):
     sendTextCommand = ' '.join(split[2:])
     if tell_person(id, sendTextCommand, markdown=markdown):
         user = person.getPersonByChatId(id)
-        tell(p.chat_id, 'Successfully sent text to ' + user.name)
+        tell(p.chat_id, 'Successfully sent text to ' + user.getFirstName())
     else:
         tell(p.chat_id, 'Problems in sending text')
 
@@ -1051,8 +1051,8 @@ class WebhookHandler(webapp2.RequestHandler):
                         count, namesString, recCommandsString = getLastContibutors(300)
                         msg = "Contributors: " + str(count) + "\nNames: " + namesString
                         reply(msg)
-                    elif text=='/testWeeklyMessage':
-                        msg = getWeeklyMessage()
+                    elif text=='/testMonthlyMessage':
+                        msg =   getMonthlyMessage()
                         reply(msg)
                     else:
                         reply('Scusa, capisco solo /help /start '
