@@ -1,26 +1,30 @@
 # -*- coding: utf-8 -*-
 
-#import json'libs'
+# Set up requests
+# see https://cloud.google.com/appengine/docs/standard/python/issue-requests#issuing_an_http_request
+import requests_toolbelt.adapters.appengine
+requests_toolbelt.adapters.appengine.monkeypatch()
+from google.appengine.api import urlfetch
+urlfetch.set_default_fetch_deadline(20)
+#ignore warnings
+import warnings
+import urllib3.contrib.appengine
+warnings.filterwarnings('ignore', r'urllib3 is using URLFetch', urllib3.contrib.appengine.AppEnginePlatformWarning)
+
 import json
 import logging
 import urllib
 import urllib2
 import person
 from person import Person
-from datetime import datetime
 from datetime import timedelta
 from time import sleep
-# import requests
-import multipart
 import recording
 from recording import Recording
 import geoUtils
 
 # for sending images
-from PIL import Image
 import multipart
-import random
-import StringIO
 import requests
 
 import key
@@ -30,25 +34,13 @@ import time_util
 # standard app engine imports
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
-from google.appengine.api import channel
-from google.appengine.api import taskqueue
 from google.appengine.ext import deferred
 from google.appengine.ext.db import datastore_errors
 
-#from google.appengine.ext import vendor
-#vendor.add('lib')
-
 import webapp2
-import copy
-import itertools
-import math
-import operator
-#from flask import Flask, jsonify
 
-import gettext
 import utility
 
-from jinja2 import Environment, FileSystemLoader
 
 # ================================
 WORK_IN_PROGRESS = False
@@ -58,8 +50,6 @@ WORK_IN_PROGRESS = False
 # ================================
 # ================================
 # ================================
-
-DASHBOARD_DIR_ENV = Environment(loader=FileSystemLoader('dashboard'), autoescape = True)
 
 ISTRUZIONI =  \
 """
@@ -421,7 +411,7 @@ def sendVoiceFile(chat_id):
             p = Person.query(Person.chat_id==chat_id).get()
             p.enabled = False
             p.put()
-            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
+            logging.info('Disabled user: {} {}'.format(p.name.encode('utf-8'), chat_id))
 
 def sendLocation(chat_id, latitude, longitude):
     try:
@@ -443,7 +433,7 @@ def sendLocation(chat_id, latitude, longitude):
             p = Person.query(Person.chat_id==chat_id).get()
             p.enabled = False
             p.put()
-            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
+            logging.info('Disabled user: {} {}'.format(p.name.encode('utf-8'), chat_id))
 
 def sendTranslation(chat_id, rec):
     translation = rec.translation
@@ -580,7 +570,7 @@ def sendVoiceUrl(chat_id, url):
             p = Person.query(Person.chat_id==chat_id).get()
             p.enabled = False
             p.put()
-            logging.info('Disabled user: ' + p.name.encode('utf-8') + _(' ') + str(chat_id))
+            logging.info('Disabled user: {} {}'.format(p.name.encode('utf-8'), chat_id))
 
 # ================================
 # ================================
