@@ -11,14 +11,14 @@ import textwrap
 
 def getFile(file_id):
     try:
-        resp = urllib2.urlopen(key.BASE_URL + 'getFile', urllib.urlencode({
+        resp = urllib2.urlopen(key.DIALECT_API_URL + 'getFile', urllib.urlencode({
             'file_id': file_id,
         })).read()
         logging.info('asked for file: ')
         logging.info(resp)
         file_path = json.loads(resp)['result']['file_path']
         logging.info('file path:' + file_path)
-        file = urllib2.urlopen(key.BASE_URL_FILE + file_path).read()
+        file = urllib2.urlopen(key.DIALECT_API_URL_FILE + file_path).read()
         return file
     except urllib2.HTTPError, err:
         logging.info("exception:" + str(err))

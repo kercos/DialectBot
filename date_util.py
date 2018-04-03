@@ -1,45 +1,27 @@
-import datetime
-from datetime import datetime
+# -*- coding: utf-8 -*-
 
-def removeOverlapping(timeIntervals):
-    timeIntervals = sorted(timeIntervals, key=lambda tup: tup[0])
-    #print('sorted intervals: ' + str(timeIntervals))
-    output = []
-    previous = None
-    for current in timeIntervals:
-        if previous is None:
-            output.append(current)
-            previous = current
-        else:
-            if current[0] <= previous[1]: # intersection
-                previous[1] = max(previous[1], current[1])
-            else:
-                output.append(current)
-                previous = current
-    return output
+from datetime import datetime as datetime
+from pytz.gae import pytz
 
-def test():
-    eventA_start = datetime.strptime('Nov 7 2015  8:32AM', '%b %d %Y %I:%M%p')
-    eventA_end = datetime.strptime('Nov 7 2015  8:38AM', '%b %d %Y %I:%M%p')
-    eventA = [eventA_start, eventA_end]
+UTC_ZONE = pytz.timezone('UTC')
+CET_ZONE = pytz.timezone('CET')
 
-    eventB_start = datetime.strptime('Nov 7 2015  8:35AM', '%b %d %Y %I:%M%p')
-    eventB_end = datetime.strptime('Nov 7 2015  8:43AM', '%b %d %Y %I:%M%p')
-    eventB = [eventB_start, eventB_end]
+def nowCET():
+    #return datetime.now()
+    utc = datetime.now()
+    utc = utc.replace(tzinfo=UTC_ZONE)
+    return utc.astimezone(CET_ZONE)
 
-    eventC_start = datetime.strptime('Nov 7 2015  9:35AM', '%b %d %Y %I:%M%p')
-    eventC_end = datetime.strptime('Nov 7 2015  9:43AM', '%b %d %Y %I:%M%p')
-    eventC = [eventC_start, eventC_end]
+def dateString(dt):
+    return dt.strftime('%d/%m/%y')
 
-    eventD_start = datetime.strptime('Nov 7 2015  6:35AM', '%b %d %Y %I:%M%p')
-    eventD_end = datetime.strptime('Nov 7 2015  6:43AM', '%b %d %Y %I:%M%p')
-    eventD = [eventD_start, eventD_end]
+def dateTimeString(dt=None):
+    if dt == None:
+        dt = nowCET()
+    return dt.strftime('%d/%m/%y %H:%M:%S')
 
-    eventE_start = datetime.strptime('Nov 7 2015  9:38AM', '%b %d %Y %I:%M%p')
-    eventE_end = datetime.strptime('Nov 7 2015  9:40AM', '%b %d %Y %I:%M%p')
-    eventE = [eventE_start, eventE_end]
+def get_datetime_ddmmyyyy(s):
+    return datetime.strptime(s, '%d%m%Y')
 
-
-    events = [eventA, eventB, eventC, eventD, eventE]
-
-    print(removeOverlapping(events))
+def get_date_long_time_ago():
+    return datetime.strptime('01011800', '%d%m%Y')

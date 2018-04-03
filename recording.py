@@ -17,10 +17,13 @@ import person
 import time_util
 import sys
 import utility
+import date_util
 
 REC_APPROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
 REC_APPROVED_STATE_TRUE = 'TRUE' #submitted
 REC_APPROVED_STATE_FALSE = 'FALSE' #submitted and closed
+
+BOT_TRANSITION_DATE = date_util.get_datetime_ddmmyyyy('01042018')
 
 class Recording(geomodel.GeoModel, ndb.Model):
     # location = ndb.GeoPtProperty() # inherited from geomodel.GeoModel
@@ -204,21 +207,27 @@ def getInfoApproved():
 # 	{GAE Path}\remote_api_shell.py -s dialectbot.appspot.com
 # 	import export_as_csv
 
+def getRecordinFileData(file_id):
+    urlfetch.set_default_fetch_deadline(20)
+    if file_id.endswith('.oga'):
+        file_id = file_id[:-4]
+    logging.debug("Requested file_id: " + file_id)
+    rec = getRecording(file_id)
+    if rec:
+        API_URL = key.DIALECT_API_URL if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL
+        API_URL_FILE = key.DIALECT_API_URL_FILE if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL_FILE
+        resp = urllib2.urlopen(API_URL + 'getFile', urllib.urlencode({'file_id': rec.file_id})).read()
+        file_path = json.loads(resp)['result']['file_path']
+        urlFile = API_URL_FILE + file_path
+        logging.debug("Url file: " + urlFile)
+        voiceFile = urllib.urlopen(urlFile).read()
+        return voiceFile
+    return None
+
 class DownloadRecordingHandler(webapp2.RequestHandler):
     def get(self, file_id):
-        if file_id.endswith('.oga'):
-            file_id = file_id[:-4]
-        urlfetch.set_default_fetch_deadline(60)
-        logging.debug("Requested file_id: " + file_id)
-        rec = getRecording(file_id)
-        if rec:
-            resp = urllib2.urlopen(key.BASE_URL + 'getFile', urllib.urlencode(
-                {'file_id': rec.file_id})).read()
-            file_path = json.loads(resp)['result']['file_path']
-            urlFile = key.BASE_URL_FILE + file_path
-            logging.debug("Url file: " + urlFile)
-            voiceFile = urllib.urlopen(urlFile).read()
-
+        voiceFile = getRecordinFileData(file_id)
+        if voiceFile:
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'filename="%s.oga"' % (file_id)
             self.response.out.write(voiceFile)
@@ -316,6 +325,15 @@ def getRecordingNames():
         names.append(p.getFirstName())
     return ', '.join(names)
 
+
+def getRecodingsStats():
+    rec_all = Recording.query(Recording.approved==REC_APPROVED_STATE_TRUE).count()
+    rec_vivaldi = Recording.query(Recording.chat_id == 0).count()
+    rec_people = Recording.query(Recording.chat_id > 0, Recording.approved==REC_APPROVED_STATE_TRUE).count() #rec_all - rec_vivaldi
+    print("rec_all: {}".format(rec_all))
+    print("rec_people: {}".format(rec_people))
+    print("rec_vivaldi: {}".format(rec_vivaldi))
+
 def updateAllRecordings():
     recs = Recording.query().fetch()
     for r in recs:
@@ -332,3 +350,4 @@ def updateVivaldi():
         r.url = r.url.replace('.OGG','.ogg')
     create_futures = ndb.put_multi_async(recs)
     ndb.Future.wait_all(create_futures)
+
