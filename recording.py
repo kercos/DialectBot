@@ -1,15 +1,11 @@
 
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
-from google.appengine.ext import blobstore
-from google.appengine.ext.webapp import blobstore_handlers
 
-import urllib, urllib2
 import webapp2
 import logging
 import random
 import json
-import os
 
 from geo import geomodel, geotypes
 import key
@@ -207,8 +203,9 @@ def getInfoApproved():
 # 	{GAE Path}\remote_api_shell.py -s dialectbot.appspot.com
 # 	import export_as_csv
 
-def getRecordinFileData(file_id):
-    urlfetch.set_default_fetch_deadline(20)
+def getRecordingVoiceData(file_id):
+    import requests
+    urlfetch.set_default_fetch_deadline(40)
     if file_id.endswith('.oga'):
         file_id = file_id[:-4]
     logging.debug("Requested file_id: " + file_id)
@@ -216,17 +213,17 @@ def getRecordinFileData(file_id):
     if rec:
         API_URL = key.DIALECT_API_URL if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL
         API_URL_FILE = key.DIALECT_API_URL_FILE if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL_FILE
-        resp = urllib2.urlopen(API_URL + 'getFile', urllib.urlencode({'file_id': rec.file_id})).read()
-        file_path = json.loads(resp)['result']['file_path']
+        r = requests.post(API_URL + 'getFile', data={'file_id': rec.file_id})
+        file_path = r.json()['result']['file_path']
         urlFile = API_URL_FILE + file_path
         logging.debug("Url file: " + urlFile)
-        voiceFile = urllib.urlopen(urlFile).read()
-        return voiceFile
+        voice_data = requests.get(urlFile).content
+        return voice_data
     return None
 
 class DownloadRecordingHandler(webapp2.RequestHandler):
     def get(self, file_id):
-        voiceFile = getRecordinFileData(file_id)
+        voiceFile = getRecordingVoiceData(file_id)
         if voiceFile:
             self.response.headers['Content-Type'] = 'application/octet-stream'
             self.response.headers['Content-Disposition'] = 'filename="%s.oga"' % (file_id)
@@ -329,10 +326,31 @@ def getRecordingNames():
 def getRecodingsStats():
     rec_all = Recording.query(Recording.approved==REC_APPROVED_STATE_TRUE).count()
     rec_vivaldi = Recording.query(Recording.chat_id == 0).count()
-    rec_people = Recording.query(Recording.chat_id > 0, Recording.approved==REC_APPROVED_STATE_TRUE).count() #rec_all - rec_vivaldi
+    rec_people_all = Recording.query(Recording.chat_id > 0).count()  # rec_all - rec_vivaldi
+    rec_people_approved = Recording.query(Recording.chat_id > 0, Recording.approved==REC_APPROVED_STATE_TRUE).count()
     print("rec_all: {}".format(rec_all))
-    print("rec_people: {}".format(rec_people))
+    print("rec_people all: {}".format(rec_people_all))
+    print("rec_people approved: {}".format(rec_people_approved))
     print("rec_vivaldi: {}".format(rec_vivaldi))
+
+def getApprovedRecordingsStats(output_tsv_file):
+    import csv
+    import date_util
+    with open(output_tsv_file, 'w') as tsvfile:
+        writer = csv.writer(tsvfile, delimiter='\t')
+        writer.writerow(['Date','Latitude','Longitude'])
+        rec_people = Recording.query(
+            Recording.chat_id > 0,
+            Recording.approved == REC_APPROVED_STATE_TRUE)
+        cursor = None
+        more = True
+        while more:
+            recs, cursor, more = rec_people.fetch_page(1000, start_cursor=cursor)
+            for r in recs:
+                date = date_util.dateString(r.date_time)
+                lat = str(r.location.lat)
+                lon = str(r.location.lon)
+                writer.writerow([date, lat, lon])
 
 def updateAllRecordings():
     recs = Recording.query().fetch()

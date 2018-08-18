@@ -112,9 +112,9 @@ Hai due modi per cercare le registrazioni vicino ad un determinato luogo:
 
 MESSAGE_FOR_FRIENDS = \
 """
-Ciao, ho scoperto @dialectbot, un tool gratuito e aperto alla comunità \
+Ciao, ho scoperto @DialettiBot, un tool gratuito e aperto alla comunità \
 per ascoltare e registrare i dialetti italiani. \
-Provalo premendo su @dialectbot!
+Provalo premendo su @DialettiBot!
 """
 
 STATES = {
@@ -190,7 +190,7 @@ def restartAllUsers(msg):
     qry = Person.query()
     count = 0
     for p in qry:
-        if (p.enabled): # or p.state>-1
+        if p.enabled:
             restart(p)
             send_message(p.chat_id, msg)
             sleep(0.100) # no more than 10 messages per second
@@ -289,12 +289,6 @@ def sendNewRecordingNotice(p):
     send_message(key.FEDE_CHAT_ID, "New recording: /rec_" + str(rec.key.id()) + " from user {0}: {1}".format(
         str(p.chat_id), p.getUserInfoString()), markdown=False)
 
-def getInfoCount():
-    c = Person.query().count()
-    #msg = "Siamo ora " + str(c) + " persone iscritte a DialectBot! " \
-    #      "Vogliamo crescere assieme! Invita altre persone ad unirsi!"
-    return c
-
 def tellmyself(p, msg):
     send_message(p.chat_id, "Udiete udite... " + msg)
 
@@ -389,11 +383,14 @@ def dealWithGuessedLocation(p,guessed_loc):
     lat_gold, lon_gold  = person.getLastRecordingLatLonLocation(p)
     logging.debug('Gold loc: ' + str((lat_gold, lon_gold)))
     logging.debug('Guessed loc: ' + str(guessed_loc))
-    luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(lat_gold, lon_gold) + '*'
+    luogo = geoUtils.getComuneProvinciaFromCoordinates(lat_gold, lon_gold)
     #dist = geoUtils.HaversineDistance(lat_guessed, lon_guessed, lat_gold, lon_gold)
     dist = geoUtils.distance((lat_guessed, lon_guessed), (lat_gold, lon_gold))
     distFormatted = format_and_comment_distance(dist)
-    send_message(p.chat_id, "Distanza: " + distFormatted + "\n" + "Questo il luogo preciso: " + luogo)
+    msg = "Distanza: " + distFormatted
+    if luogo:
+        msg += '\n' + "Questo il luogo preciso: *{}*".format(luogo)
+    send_message(p.chat_id, msg)
     rec = recording.getRecordingCheckIfUrl(p.last_recording_file_id)
     send_location(p.chat_id, lat_gold, lon_gold)
     sendTranslation(p.chat_id, rec)
@@ -473,9 +470,9 @@ class InfoAllUsersMonthlyHandler(webapp2.RequestHandler):
         broadcast(key.FEDE_CHAT_ID, msg, restart_user=True)
 
 def getMonthlyMessage():
-    people_count = getInfoCount()
-    contr_count, contr_namesString, recCommandsString = getLastContibutors(30)
-    msg = "Siamo ora " + str(people_count) + " persone iscritte a DialectBot!\n\n"
+    people_count = person.getPeopleCount()
+    contr_count, contr_namesString, recCommandsString = getLastContibutors(31)
+    msg = "Siamo ora " + str(people_count) + " persone iscritte a @DialettiBot!\n\n"
     if contr_count > 0:
         if contr_count == 1:
             msg += utility.unindent(
@@ -776,7 +773,7 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                         #taskqueue.add(url='/worker', params={'key': key})
                         #geoUtils.test_Google_Map_Api()
                     elif text== '/infoCounts':
-                        c = getInfoCount()
+                        c = person.getPeopleCount()
                         reply("Number of users: " + str(c))
                     elif text == '/restartUsers':
                         text = "Nuova interfaccia e nuove funzionalità :)\n" \
@@ -937,6 +934,10 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                     getAllRecordings(p)
                     person.setState(p, 33)
                     # state 33
+                else:
+                    msg = "Input non valido. Usa i pulsanti qua sotto."
+                    reply(msg)
+                    return
             elif p.state == 31:
                 # ASCOLTA - INDOVINA LUOGO
                 if text == BOTTONE_INDIETRO:
@@ -969,7 +970,7 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                         dealWithFindClosestRecording(p, loc)
                     else:
                         reply("Non conosco la località inserita, prova ad essere più precisa/o.\n" +
-                              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_ANNULLA]])
+                              ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_INDIETRO]])
             elif p.state == 33:
                 # REGISTRAZIONI RECENTI
                 if text== BOTTONE_INDIETRO:

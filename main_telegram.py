@@ -132,7 +132,7 @@ def send_voice(chat_id, rec):
 
     if rec.file_id:
         if rec.date_time < recording.BOT_TRANSITION_DATE:
-            rec_data = recording.getRecordinFileData(rec.file_id)
+            rec_data = recording.getRecordingVoiceData(rec.file_id)
             file_data = [('voice', ('voice', rec_data, 'audio/ogg'))]
             data = {
                 'chat_id': chat_id,

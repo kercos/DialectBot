@@ -3,5 +3,5 @@
 cron:
 - description: info user monthly for all
   url: /infouser_monthly_all
-  schedule: 1st sunday of month 11:00
+  schedule: 1 of month 12:00
   timezone: Europe/Rome

@@ -101,3 +101,11 @@ def getLastRecordingLatLonLocation(p):
     rec = recording.getRecordingCheckIfUrl(p.last_recording_file_id)
     return rec.location.lat, rec.location.lon
 
+def getPeopleCount():
+    cursor = None
+    more = True
+    total = 0
+    while more:
+        keys, cursor, more = Person.query().fetch_page(1000, start_cursor=cursor, keys_only=True)
+        total += len(keys)
+    return total
