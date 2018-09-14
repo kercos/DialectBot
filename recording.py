@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
@@ -214,7 +215,13 @@ def getRecordingVoiceData(file_id):
         API_URL = key.DIALECT_API_URL if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL
         API_URL_FILE = key.DIALECT_API_URL_FILE if rec.date_time < BOT_TRANSITION_DATE else key.DIALETTI_API_URL_FILE
         r = requests.post(API_URL + 'getFile', data={'file_id': rec.file_id})
-        file_path = r.json()['result']['file_path']
+        r_json = r.json()
+        if 'result' not in r_json or 'file_path' not in r_json['result']:
+            from main_telegram import tell_admin
+            logging.warning('No result found in json: {}'.format(r_json))
+            tell_admin('⚠️ Warning in getRecordingVoiceData')
+            return None
+        file_path = r_json['result']['file_path']
         urlFile = API_URL_FILE + file_path
         logging.debug("Url file: " + urlFile)
         voice_data = requests.get(urlFile).content

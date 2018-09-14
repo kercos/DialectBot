@@ -52,8 +52,8 @@ ISTRUZIONI =  \
 Sono @DialettiBot, uno *strumento gratuito e aperto alla comunità* per condividere registrazioni nei diversi dialetti. \
 Hai la possibilità di 👂 ascoltare gli audio che sono già stati inseriti o 🗣 registrarne di nuovi.
 
-Se pensi di non parlare nessun dialetto specifico ti consigliamo \
-di utilizzare questo strumento per registrare parenti, amici o persone \
+Se pensi di non parlare nessun dialetto puoi comunque \
+utilizzare questo strumento per registrare parenti, amici o persone \
 che incontri quando ti capita di viaggiare tra paesini sperduti in Italia.
 
 Se vai sul sito http://dialectbot.appspot.com potrai *visualizzare* (e *ascoltare*) tutte le \
