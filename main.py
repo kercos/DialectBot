@@ -426,11 +426,17 @@ def dealWithFindClosestRecording(p, location):
         send_voice(p.chat_id, rec)
         send_location(p.chat_id, rec.location.lat, rec.location.lon)
         sendTranslation(p.chat_id, rec)
-        luogo = '*' + geoUtils.getComuneProvinciaFromCoordinates(rec.location.lat, rec.location.lon) + '*'
-        dst = geoUtils.distance((location['latitude'], location['longitude']),(rec.location.lat,rec.location.lon))
-        send_message(p.chat_id, "Luogo della registrazione: " + luogo +
-             ". La distanza dal luogo inserito è di: " + format_distance(dst) + ".")
+        comune_provincia = geoUtils.getComuneProvinciaFromCoordinates(rec.location.lat, rec.location.lon)
+        dst = geoUtils.distance((location['latitude'], location['longitude']), (rec.location.lat, rec.location.lon))
+        if comune_provincia:
+            luogo = '*' + comune_provincia + '*'
+            send_message(p.chat_id, "Luogo della registrazione: " + luogo +
+                 ". La distanza dal luogo inserito è di: " + format_distance(dst) + ".")
+        else:
+            send_message(p.chat_id, "La distanza dal luogo inserito è di: " + format_distance(dst) + ".")
+            logging.warning("Can't find luogo for registrazione id = {}".format(rec.key.id()))
         send_message(p.chat_id, "Se vuoi cercare un'altra registrazione inserisci una nuova località altrimenti premi 'Indietro'.")
+
     else:
         send_message(p.chat_id, "Non ho trovato nessuna registrazione nelle vicinanze della posizione inserita. Riprova.\n" +
               ISTRUZIONI_POSIZIONE_SEARCH, kb = [[BOTTONE_INDIETRO]])
