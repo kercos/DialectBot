@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime as datetime
-from pytz.gae import pytz
+from pytz_zip.gae import pytz_zip
 
-UTC_ZONE = pytz.timezone('UTC')
-CET_ZONE = pytz.timezone('CET')
+UTC_ZONE = pytz_zip.timezone('UTC')
+CET_ZONE = pytz_zip.timezone('CET')
 
 def nowCET():
     #return datetime.now()

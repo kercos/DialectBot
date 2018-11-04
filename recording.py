@@ -14,13 +14,14 @@ import person
 import time_util
 import sys
 import utility
+
 import date_util
+
+BOT_TRANSITION_DATE = date_util.get_datetime_ddmmyyyy('01042018')
 
 REC_APPROVED_STATE_IN_PROGRESS = 'IN PROGRESS' #being filled in
 REC_APPROVED_STATE_TRUE = 'TRUE' #submitted
 REC_APPROVED_STATE_FALSE = 'FALSE' #submitted and closed
-
-BOT_TRANSITION_DATE = date_util.get_datetime_ddmmyyyy('01042018')
 
 class Recording(geomodel.GeoModel, ndb.Model):
     # location = ndb.GeoPtProperty() # inherited from geomodel.GeoModel

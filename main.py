@@ -778,7 +778,7 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                         #reply(geoUtils.getLocationTest())
                         #taskqueue.add(url='/worker', params={'key': key})
                         #geoUtils.test_Google_Map_Api()
-                    elif text== '/infoCounts':
+                    elif text == '/infoCounts':
                         c = person.getPeopleCount()
                         reply("Number of users: " + str(c))
                     elif text == '/restartUsers':
