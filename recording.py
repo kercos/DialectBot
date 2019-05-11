@@ -330,16 +330,17 @@ def getRecordingNames():
         names.append(p.getFirstName())
     return ', '.join(names)
 
-
 def getRecodingsStats():
     rec_all = Recording.query(Recording.approved==REC_APPROVED_STATE_TRUE).count()
     rec_vivaldi = Recording.query(Recording.chat_id == 0).count()
     rec_people_all = Recording.query(Recording.chat_id > 0).count()  # rec_all - rec_vivaldi
     rec_people_approved = Recording.query(Recording.chat_id > 0, Recording.approved==REC_APPROVED_STATE_TRUE).count()
-    print("rec_all: {}".format(rec_all))
-    print("rec_people all: {}".format(rec_people_all))
-    print("rec_people approved: {}".format(rec_people_approved))
-    print("rec_vivaldi: {}".format(rec_vivaldi))
+    report = []
+    report.append("rec_all: {}".format(rec_all))
+    report.append("rec_people all: {}".format(rec_people_all))
+    report.append("rec_people approved: {}".format(rec_people_approved))
+    report.append("rec_vivaldi: {}".format(rec_vivaldi))
+    return '\n'.join(report)
 
 def getApprovedRecordingsStats(output_tsv_file):
     import csv

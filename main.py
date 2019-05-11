@@ -801,6 +801,14 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                     elif text == '/remFormatVoice':
                         c = recording.removeFormatVoice()
                         reply("removed rec format voice: " + str(c))
+                    elif text == '/stats':
+                        msg = recording.getRecodingsStats()
+                        send_message(p.chat_id, msg, markdown=False)
+                        msg = "People count: {}".format(person.getPeopleCount())
+                        send_message(p.chat_id, msg, markdown=False)
+                    elif text.startswith('/echo ') and len(text)>6:
+                        msg = text[6:]
+                        reply(msg)
                     elif text.startswith('/broadcast ') and len(text)>11:
                         msg = text[11:]
                         deferred.defer(broadcast, p.chat_id, msg, restart_user=False)
