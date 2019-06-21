@@ -328,7 +328,8 @@ def getRecordingNames():
     for id in chat_id_set:
         p = person.getPersonByChatId(id)
         names.append(p.getFirstName())
-    return ', '.join(names)
+    print(', '.join(names))
+    print(str(len(names)))
 
 def getRecodingsStats():
     rec_all = Recording.query(Recording.approved==REC_APPROVED_STATE_TRUE).count()
@@ -340,7 +341,7 @@ def getRecodingsStats():
     report.append("rec_people all: {}".format(rec_people_all))
     report.append("rec_people approved: {}".format(rec_people_approved))
     report.append("rec_vivaldi: {}".format(rec_vivaldi))
-    return '\n'.join(report)
+    print('\n'.join(report))
 
 def getApprovedRecordingsStats(output_tsv_file):
     import csv

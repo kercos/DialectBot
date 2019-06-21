@@ -711,10 +711,12 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
         name = chat["first_name"]
         last_name = chat.get("last_name", "-")
         username = chat.get("username", "-")
-        location = chat.get("location", None)
+        location = message.get("location", None)
         voice = message.get("voice", None)
         #audio = message.get("audio", None)
         #document = message.get("document", None)
+
+        logging.debug("Received input from {}. Text={} Location={}".format(chat_id, text, location))
 
         def reply(msg=None, kb=None, markdown=True, inline_keyboard=False):
             send_message(chat_id, msg, kb=kb, markdown=markdown, inline_keyboard=inline_keyboard)
@@ -837,7 +839,9 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                 if text == BOTTONE_ANNULLA:
                     restart(p, "Operazione annullata.")
                 elif location!=None:
+                    logging.debug('User sending location: {}, {}'.format(location['latitude'], location['longitude']))
                     luogo = geoUtils.getComuneProvinciaFromCoordinates(location['latitude'], location['longitude'])
+                    logging.debug('Detected luogo: {}'.format(luogo))
                     if luogo:
                         person.setLocation(p, location['latitude'], location['longitude'])
                         dealWithPlaceAndMicInstructions(p)
@@ -954,7 +958,7 @@ class DialettiWebhookHandler(webapp2.RequestHandler):
                     return
             elif p.state == 31:
                 # ASCOLTA - INDOVINA LUOGO
-                if text == BOTTONE_INDIETRO:
+                if text in [BOTTONE_INDIETRO, BOTTONE_ANNULLA]:
                     restart(p)
                     # state = -1
                 elif text=="ASCOLTA NUOVA REGISTRAZIONE":

@@ -137,3 +137,6 @@ def HaversineDistance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     d = EARTH_RADIUS * c
     return d
+
+if __name__ == "__main__":
+    print(getComuneProvinciaFromCoordinates('46.070936', '11.124064'))

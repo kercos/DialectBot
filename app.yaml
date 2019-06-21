@@ -1,5 +1,5 @@
-application: dialectbot
-version: 2
+# application: dialectbot
+
 runtime: python27
 api_version: 1
 threadsafe: false
