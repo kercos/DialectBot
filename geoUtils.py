@@ -50,8 +50,8 @@ def getBoxCoordinates(lat, lon, radius):
 
 # see https://developers.google.com/maps/documentation/geocoding/intro
 # e.g., http://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&latlng=46.0682115,11.1221167665254
-# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&latlng=46.069141,11.152745&key=AIzaSyCjmN2mmOviJXuJishwacbc-q4FQwYiFro
-# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&address=via del roro, 6A, 38052, Caldonazzo, TN&key=AIzaSyCjmN2mmOviJXuJishwacbc-q4FQwYiFro
+# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&latlng=46.069141,11.152745&key=<api_key>
+# e.g., https://maps.googleapis.com/maps/api/geocode/json?language=it&region=it&location_type=ROOFTOP&result_type=street_address&address=via del roro, 6A, 38052, Caldonazzo, TN&key=<api_key>
 googleapis_url = "https://maps.googleapis.com/maps/api/geocode/json?"
 
 def getComuneProvinciaFromCoordinates(lat, lon):
